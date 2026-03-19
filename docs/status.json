@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "last_updated": "2026-03-19T14:19:06Z",
+    "last_updated": "2026-03-19T14:22:48Z",
     "collector": "monitor.py",
     "interval_minutes": 5
   },
@@ -318,14 +318,9 @@
           "neighbor_id": "1.1.1.1",
           "state": "FULL",
           "interface": "GigabitEthernet0/0"
-        },
-        {
-          "neighbor_id": "4.4.4.4",
-          "state": "FULL",
-          "interface": "GigabitEthernet0/1"
         }
       ],
-      "ospf_routes": 7
+      "ospf_routes": 0
     },
     "R1": {
       "status": "up",
