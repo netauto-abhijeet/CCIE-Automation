@@ -1,92 +1,51 @@
 {
   "_meta": {
-    "last_updated": "2026-03-19T14:22:48Z",
+    "last_updated": "2026-03-19T14:26:17Z",
     "collector": "monitor.py",
     "interval_minutes": 5
   },
   "devices": {
-    "R3": {
+    "R1": {
       "status": "up",
       "interfaces": [
         {
           "name": "GigabitEthernet0/0",
-          "ip": "13.0.0.3",
+          "ip": "12.0.0.1",
           "status": "up",
           "protocol": "up"
         },
         {
           "name": "GigabitEthernet0/1",
-          "ip": "192.168.1.1",
+          "ip": "13.0.0.1",
           "status": "up",
           "protocol": "up"
         },
         {
           "name": "GigabitEthernet0/2",
-          "ip": "192.168.2.1",
-          "status": "up",
-          "protocol": "up"
+          "ip": null,
+          "status": "administratively",
+          "protocol": "down"
         },
         {
           "name": "GigabitEthernet0/3",
-          "ip": "192.168.3.1",
-          "status": "up",
-          "protocol": "up"
+          "ip": null,
+          "status": "administratively",
+          "protocol": "down"
         }
       ],
       "ospf_neighbors": [
         {
-          "neighbor_id": "1.1.1.1",
+          "neighbor_id": "2.2.2.2",
           "state": "FULL",
           "interface": "GigabitEthernet0/0"
+        },
+        {
+          "neighbor_id": "192.168.3.1",
+          "state": "FULL",
+          "interface": "GigabitEthernet0/1"
         }
       ],
-      "ospf_routes": 5,
-      "dhcp_pools": [
-        {
-          "name": "IT_ADMIN",
-          "leased": 0,
-          "total": 254,
-          "network": "192.168.1.0/24"
-        }
-      ]
-    },
-    "Sw6": {
-      "status": "up",
-      "interfaces": [
-        {
-          "name": "Gi0/0",
-          "status": "connected"
-        },
-        {
-          "name": "Gi0/1",
-          "status": "connected"
-        },
-        {
-          "name": "Gi0/2",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi0/3",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/0",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/1",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/2",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/3",
-          "status": "notconnect"
-        }
-      ],
-      "connected_ports": 2
+      "ospf_routes": 7
     },
     "Sw9": {
       "status": "up",
@@ -168,6 +127,18 @@
           "leased": 0,
           "total": 254,
           "network": "192.168.4.0/24"
+        },
+        {
+          "name": "SERVERS",
+          "leased": 0,
+          "total": 254,
+          "network": "192.168.5.0/24"
+        },
+        {
+          "name": "MGMT",
+          "leased": 0,
+          "total": 254,
+          "network": "192.168.6.0/24"
         }
       ]
     },
@@ -318,42 +289,111 @@
           "neighbor_id": "1.1.1.1",
           "state": "FULL",
           "interface": "GigabitEthernet0/0"
+        },
+        {
+          "neighbor_id": "4.4.4.4",
+          "state": "FULL",
+          "interface": "GigabitEthernet0/1"
         }
       ],
-      "ospf_routes": 0
+      "ospf_routes": 7
     },
-    "R1": {
+    "Sw8": {
+      "status": "up",
+      "interfaces": [
+        {
+          "name": "Gi0/0",
+          "status": "connected"
+        },
+        {
+          "name": "Gi0/1",
+          "status": "connected"
+        },
+        {
+          "name": "Gi0/2",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi0/3",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/0",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/1",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/2",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/3",
+          "status": "notconnect"
+        }
+      ],
+      "connected_ports": 2
+    },
+    "R3": {
       "status": "up",
       "interfaces": [
         {
           "name": "GigabitEthernet0/0",
-          "ip": "12.0.0.1",
+          "ip": "13.0.0.3",
           "status": "up",
           "protocol": "up"
         },
         {
           "name": "GigabitEthernet0/1",
-          "ip": "13.0.0.1",
+          "ip": "192.168.1.1",
           "status": "up",
           "protocol": "up"
         },
         {
           "name": "GigabitEthernet0/2",
-          "ip": null,
-          "status": "administratively",
-          "protocol": "down"
+          "ip": "192.168.2.1",
+          "status": "up",
+          "protocol": "up"
         },
         {
           "name": "GigabitEthernet0/3",
-          "ip": null,
-          "status": "administratively",
-          "protocol": "down"
+          "ip": "192.168.3.1",
+          "status": "up",
+          "protocol": "up"
         }
       ],
-      "ospf_neighbors": [],
-      "ospf_routes": 0
+      "ospf_neighbors": [
+        {
+          "neighbor_id": "1.1.1.1",
+          "state": "FULL",
+          "interface": "GigabitEthernet0/0"
+        }
+      ],
+      "ospf_routes": 5,
+      "dhcp_pools": [
+        {
+          "name": "IT_ADMIN",
+          "leased": 1,
+          "total": 254,
+          "network": "192.168.1.0/24"
+        },
+        {
+          "name": "HR",
+          "leased": 0,
+          "total": 254,
+          "network": "192.168.2.0/24"
+        },
+        {
+          "name": "GUEST",
+          "leased": 0,
+          "total": 254,
+          "network": "192.168.3.0/24"
+        }
+      ]
     },
-    "Sw8": {
+    "Sw6": {
       "status": "up",
       "interfaces": [
         {
