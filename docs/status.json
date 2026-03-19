@@ -1,10 +1,93 @@
 {
   "_meta": {
-    "last_updated": "2026-03-19T14:18:03Z",
+    "last_updated": "2026-03-19T14:19:06Z",
     "collector": "monitor.py",
     "interval_minutes": 5
   },
   "devices": {
+    "R3": {
+      "status": "up",
+      "interfaces": [
+        {
+          "name": "GigabitEthernet0/0",
+          "ip": "13.0.0.3",
+          "status": "up",
+          "protocol": "up"
+        },
+        {
+          "name": "GigabitEthernet0/1",
+          "ip": "192.168.1.1",
+          "status": "up",
+          "protocol": "up"
+        },
+        {
+          "name": "GigabitEthernet0/2",
+          "ip": "192.168.2.1",
+          "status": "up",
+          "protocol": "up"
+        },
+        {
+          "name": "GigabitEthernet0/3",
+          "ip": "192.168.3.1",
+          "status": "up",
+          "protocol": "up"
+        }
+      ],
+      "ospf_neighbors": [
+        {
+          "neighbor_id": "1.1.1.1",
+          "state": "FULL",
+          "interface": "GigabitEthernet0/0"
+        }
+      ],
+      "ospf_routes": 5,
+      "dhcp_pools": [
+        {
+          "name": "IT_ADMIN",
+          "leased": 0,
+          "total": 254,
+          "network": "192.168.1.0/24"
+        }
+      ]
+    },
+    "Sw6": {
+      "status": "up",
+      "interfaces": [
+        {
+          "name": "Gi0/0",
+          "status": "connected"
+        },
+        {
+          "name": "Gi0/1",
+          "status": "connected"
+        },
+        {
+          "name": "Gi0/2",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi0/3",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/0",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/1",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/2",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/3",
+          "status": "notconnect"
+        }
+      ],
+      "connected_ports": 2
+    },
     "Sw9": {
       "status": "up",
       "interfaces": [
@@ -244,44 +327,6 @@
       ],
       "ospf_routes": 7
     },
-    "Sw8": {
-      "status": "up",
-      "interfaces": [
-        {
-          "name": "Gi0/0",
-          "status": "connected"
-        },
-        {
-          "name": "Gi0/1",
-          "status": "connected"
-        },
-        {
-          "name": "Gi0/2",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi0/3",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/0",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/1",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/2",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/3",
-          "status": "notconnect"
-        }
-      ],
-      "connected_ports": 2
-    },
     "R1": {
       "status": "up",
       "interfaces": [
@@ -313,52 +358,7 @@
       "ospf_neighbors": [],
       "ospf_routes": 0
     },
-    "R3": {
-      "status": "up",
-      "interfaces": [
-        {
-          "name": "GigabitEthernet0/0",
-          "ip": "13.0.0.3",
-          "status": "up",
-          "protocol": "up"
-        },
-        {
-          "name": "GigabitEthernet0/1",
-          "ip": "192.168.1.1",
-          "status": "up",
-          "protocol": "up"
-        },
-        {
-          "name": "GigabitEthernet0/2",
-          "ip": "192.168.2.1",
-          "status": "up",
-          "protocol": "up"
-        },
-        {
-          "name": "GigabitEthernet0/3",
-          "ip": "192.168.3.1",
-          "status": "up",
-          "protocol": "up"
-        }
-      ],
-      "ospf_neighbors": [
-        {
-          "neighbor_id": "1.1.1.1",
-          "state": "FULL",
-          "interface": "GigabitEthernet0/0"
-        }
-      ],
-      "ospf_routes": 5,
-      "dhcp_pools": [
-        {
-          "name": "IT_ADMIN",
-          "leased": 0,
-          "total": 254,
-          "network": "192.168.1.0/24"
-        }
-      ]
-    },
-    "Sw6": {
+    "Sw8": {
       "status": "up",
       "interfaces": [
         {
