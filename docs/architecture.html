@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CCIE Lab Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #e6edf3;
+    min-height: 100vh;
+    padding: 30px 20px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 22px;
+    color: #58a6ff;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 13px;
+    color: #8b949e;
+    margin-bottom: 36px;
+    letter-spacing: 1px;
+  }
+
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* LAYER CARD */
+  .layer {
+    width: 100%;
+    border-radius: 14px;
+    padding: 22px 26px;
+    position: relative;
+  }
+
+  .layer-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .layer-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    opacity: 0.3;
+    background: currentColor;
+  }
+
+  /* LAYER COLOURS */
+  .layer-network  { background: #0f2027; border: 1.5px solid #1f6feb; }
+  .layer-network .layer-label  { color: #58a6ff; }
+
+  .layer-auto     { background: #1a1a0f; border: 1.5px solid #d29922; }
+  .layer-auto .layer-label     { color: #e3b341; }
+
+  .layer-cloud    { background: #0f1f17; border: 1.5px solid #238636; }
+  .layer-cloud .layer-label    { color: #3fb950; }
+
+  /* DEVICE GRID */
+  .devices {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .device-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .device-group-label {
+    font-size: 10px;
+    color: #8b949e;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .device-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .device {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: default;
+  }
+  .device-icon {
+    width: 46px;
+    height: 36px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transition: transform 0.15s;
+  }
+  .device-icon:hover { transform: scale(1.12); }
+  .device-name {
+    font-size: 10px;
+    color: #8b949e;
+  }
+
+  .icon-router  { background: #1f3a6e; border: 1px solid #388bfd; color: #79c0ff; }
+  .icon-switch  { background: #2d1f6e; border: 1px solid #8957e5; color: #d2a8ff; }
+  .icon-vpc     { background: #1f3d2d; border: 1px solid #3fb950; color: #7ee787; }
+
+  /* EVE-NG info bar */
+  .info-bar {
+    display: flex;
+    gap: 20px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    flex-wrap: wrap;
+  }
+  .info-item {
+    font-size: 12px;
+    color: #8b949e;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .info-item strong { color: #c9d1d9; }
+  .badge {
+    background: rgba(31, 111, 235, 0.2);
+    border: 1px solid #1f6feb;
+    color: #79c0ff;
+    border-radius: 12px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-yellow {
+    background: rgba(210, 153, 34, 0.2);
+    border-color: #d29922;
+    color: #e3b341;
+  }
+  .badge-green {
+    background: rgba(35, 134, 54, 0.2);
+    border-color: #238636;
+    color: #3fb950;
+  }
+
+  /* AUTOMATION LAYER CONTENT */
+  .auto-content {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .auto-block {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(210,153,34,0.3);
+    border-radius: 10px;
+    padding: 14px 16px;
+    flex: 1;
+    min-width: 180px;
+  }
+  .auto-block h3 {
+    font-size: 12px;
+    font-weight: 700;
+    color: #e3b341;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .auto-block ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .auto-block li {
+    font-size: 12px;
+    color: #c9d1d9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-yellow { background: #e3b341; }
+  .dot-blue   { background: #79c0ff; }
+  .dot-green  { background: #7ee787; }
+
+  /* CLOUD LAYER CONTENT */
+  .cloud-content {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .cloud-block {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(35,134,54,0.3);
+    border-radius: 10px;
+    padding: 14px 16px;
+    flex: 1;
+    min-width: 180px;
+  }
+  .cloud-block h3 {
+    font-size: 12px;
+    font-weight: 700;
+    color: #3fb950;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .cloud-block ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .cloud-block li {
+    font-size: 12px;
+    color: #c9d1d9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ARROW */
+  .arrow-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 0;
+  }
+  .arrow-label {
+    font-size: 11px;
+    color: #6e7681;
+    letter-spacing: 0.5px;
+  }
+  .arrow-line {
+    width: 2px;
+    height: 28px;
+    background: linear-gradient(to bottom, #30363d, #58a6ff55);
+    position: relative;
+  }
+  .arrow-line::after {
+    content: '▼';
+    position: absolute;
+    bottom: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #58a6ff;
+    font-size: 12px;
+  }
+
+  .arrow-yellow .arrow-line {
+    background: linear-gradient(to bottom, #30363d, #e3b34155);
+  }
+  .arrow-yellow .arrow-line::after { color: #e3b341; }
+
+  .arrow-green .arrow-line {
+    background: linear-gradient(to bottom, #30363d, #3fb95055);
+  }
+  .arrow-green .arrow-line::after { color: #3fb950; }
+
+  /* FOLDER TREE */
+  .folder-tree {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 14px 18px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.9;
+    color: #8b949e;
+    min-width: 240px;
+    max-width: 300px;
+  }
+  .folder-tree .dir  { color: #79c0ff; }
+  .folder-tree .file { color: #c9d1d9; }
+  .folder-tree .key  { color: #7ee787; font-weight: 700; }
+  .folder-tree .dim  { color: #6e7681; font-size: 11px; }
+
+  /* BOTTOM SUMMARY */
+  .summary {
+    margin-top: 28px;
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .summary-card {
+    flex: 1;
+    min-width: 160px;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  .summary-card .num {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .summary-card .desc {
+    font-size: 11px;
+    color: #8b949e;
+    letter-spacing: 0.5px;
+  }
+  .c-blue { color: #58a6ff; }
+  .c-yellow { color: #e3b341; }
+  .c-green  { color: #3fb950; }
+  .c-purple { color: #d2a8ff; }
+</style>
+</head>
+<body>
+
+<h1>CCIE Lab — System Architecture</h1>
+<p class="subtitle">How EVE-NG → Ubuntu VM → GitHub Pages fit together</p>
+
+<div class="pipeline">
+
+  <!-- ═══════════════════════════════════════════════════════ LAYER 1 -->
+  <div class="layer layer-network" style="width:100%">
+    <div class="layer-label">① Network Layer — EVE-NG PRO (192.168.1.100)</div>
+
+    <div class="devices">
+
+      <!-- Routers -->
+      <div class="device-group">
+        <div class="device-group-label">Routers — OSPF + DHCP Server</div>
+        <div class="device-row">
+          <div class="device"><div class="device-icon icon-router">R1</div><span class="device-name">Area 0</span></div>
+          <div class="device"><div class="device-icon icon-router">R2</div><span class="device-name">Area 0</span></div>
+          <div class="device"><div class="device-icon icon-router">R3</div><span class="device-name">Area 10</span></div>
+          <div class="device"><div class="device-icon icon-router">R4</div><span class="device-name">Area 20</span></div>
+        </div>
+      </div>
+
+      <div style="width:1px;background:rgba(255,255,255,0.08);margin:0 4px;align-self:stretch;border-radius:2px"></div>
+
+      <!-- Switches -->
+      <div class="device-group">
+        <div class="device-group-label">Switches — Layer 2 / STP</div>
+        <div class="device-row">
+          <div class="device"><div class="device-icon icon-switch">Sw5</div><span class="device-name">A10</span></div>
+          <div class="device"><div class="device-icon icon-switch">Sw6</div><span class="device-name">A10</span></div>
+          <div class="device"><div class="device-icon icon-switch">Sw7</div><span class="device-name">A10</span></div>
+          <div class="device"><div class="device-icon icon-switch">Sw8</div><span class="device-name">A20</span></div>
+          <div class="device"><div class="device-icon icon-switch">Sw9</div><span class="device-name">A20</span></div>
+          <div class="device"><div class="device-icon icon-switch">Sw10</div><span class="device-name">A20</span></div>
+        </div>
+      </div>
+
+      <div style="width:1px;background:rgba(255,255,255,0.08);margin:0 4px;align-self:stretch;border-radius:2px"></div>
+
+      <!-- VPCs -->
+      <div class="device-group">
+        <div class="device-group-label">VPCs — DHCP Clients</div>
+        <div class="device-row">
+          <div class="device"><div class="device-icon icon-vpc">V11</div><span class="device-name">A10</span></div>
+          <div class="device"><div class="device-icon icon-vpc">V12</div><span class="device-name">A10</span></div>
+          <div class="device"><div class="device-icon icon-vpc">V13</div><span class="device-name">A10</span></div>
+          <div class="device"><div class="device-icon icon-vpc">V14</div><span class="device-name">A20</span></div>
+          <div class="device"><div class="device-icon icon-vpc">V15</div><span class="device-name">A20</span></div>
+          <div class="device"><div class="device-icon icon-vpc">V16</div><span class="device-name">A20</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-bar">
+      <div class="info-item"><strong>Lab:</strong> <span class="badge">lab01-ospf-multiarea-acl</span></div>
+      <div class="info-item"><strong>Protocol:</strong> Telnet console ports</div>
+      <div class="info-item"><strong>Total Devices:</strong> <span class="badge">16</span></div>
+      <div class="info-item" style="color:#e3b341">⚠ Dashboard only live while EVE-NG is ON</div>
+    </div>
+  </div>
+
+  <!-- arrow 1 -->
+  <div class="arrow-wrapper arrow-yellow">
+    <span class="arrow-label">Telnet poll — every 5 min via cron</span>
+    <div class="arrow-line"></div>
+    <div style="height:14px"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ LAYER 2 -->
+  <div class="layer layer-auto" style="width:100%">
+    <div class="layer-label">② Automation Layer — Ubuntu VM (192.168.1.103)</div>
+
+    <div class="auto-content">
+
+      <!-- Script -->
+      <div class="auto-block">
+        <h3>⚙ monitor.py</h3>
+        <ul>
+          <li><span class="dot dot-yellow"></span>Connects via Telnet to all 16 consoles</li>
+          <li><span class="dot dot-yellow"></span>Runs <code style="color:#e3b341">show ip int brief</code>, <code style="color:#e3b341">show ip ospf</code> etc.</li>
+          <li><span class="dot dot-yellow"></span>ThreadPoolExecutor — polls all 16 in parallel</li>
+          <li><span class="dot dot-yellow"></span>Writes results → <code style="color:#7ee787">status.json</code></li>
+          <li><span class="dot dot-blue"></span>Git add / commit / push → GitHub</li>
+        </ul>
+      </div>
+
+      <!-- Cron -->
+      <div class="auto-block">
+        <h3>🕐 Cron Schedule</h3>
+        <ul>
+          <li><span class="dot dot-yellow"></span><code style="color:#e3b341">*/5 * * * *</code> — every 5 min</li>
+          <li><span class="dot dot-yellow"></span>Runs as root on Ubuntu VM</li>
+          <li><span class="dot dot-yellow"></span>Logs to <code style="color:#c9d1d9">/var/log/monitor.log</code></li>
+          <li><span class="dot dot-blue"></span>No manual trigger needed</li>
+        </ul>
+      </div>
+
+      <!-- Folder tree -->
+      <div class="folder-tree">
+        <span class="dir">CCIE-Automation/</span><br>
+        <span>├── </span><span class="dir">docs/</span><span class="dim">         ← GitHub Pages root</span><br>
+        <span>│   ├── </span><span class="key">index.html</span><span class="dim">   ← Dashboard UI</span><br>
+        <span>│   └── </span><span class="key">status.json</span><span class="dim">  ← Live data</span><br>
+        <span>└── </span><span class="dir">labs/</span><br>
+        <span>    └── </span><span class="dir">lab01-ospf.../</span><br>
+        <span>        ├── </span><span class="dir">scripts/</span><br>
+        <span>        │   └── </span><span class="key">monitor.py</span><br>
+        <span>        └── </span><span class="dir">configs/</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- arrow 2 -->
+  <div class="arrow-wrapper arrow-green">
+    <span class="arrow-label">git push → GitHub repo (main branch)</span>
+    <div class="arrow-line"></div>
+    <div style="height:14px"></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ LAYER 3 -->
+  <div class="layer layer-cloud" style="width:100%">
+    <div class="layer-label">③ Visibility Layer — GitHub Pages (Public URL)</div>
+
+    <div class="cloud-content">
+
+      <div class="cloud-block">
+        <h3>📁 GitHub Repo</h3>
+        <ul>
+          <li><span class="dot dot-blue"></span>Source: <code style="color:#79c0ff">github.com/you/CCIE-Automation</code></li>
+          <li><span class="dot dot-green"></span>Pages served from <code style="color:#7ee787">/docs</code> folder</li>
+          <li><span class="dot dot-green"></span>Every git push = instant dashboard update</li>
+        </ul>
+      </div>
+
+      <div class="cloud-block">
+        <h3>🌐 Live Dashboard Tabs</h3>
+        <ul>
+          <li><span class="dot dot-blue"></span>Overview — device status at a glance</li>
+          <li><span class="dot dot-blue"></span>Topology — vis.js interactive graph</li>
+          <li><span class="dot dot-blue"></span>Interfaces — per-device breakdown</li>
+          <li><span class="dot dot-blue"></span>OSPF — neighbor + area detail</li>
+          <li><span class="dot dot-blue"></span>Raw — full JSON data</li>
+        </ul>
+      </div>
+
+      <div class="cloud-block">
+        <h3>⚡ Data Flow Summary</h3>
+        <ul>
+          <li><span class="dot dot-yellow"></span>EVE-NG ON → polling works</li>
+          <li><span class="dot dot-green"></span>status.json updates every 5 min</li>
+          <li><span class="dot dot-green"></span>Dashboard auto-refreshes from JSON</li>
+          <li><span class="dot dot-blue"></span>index.html is static (never changes)</li>
+          <li><span class="dot dot-yellow"></span>EVE-NG OFF → last snapshot shown</li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="info-bar">
+      <div class="info-item"><strong>URL:</strong> <span class="badge badge-green">https://&lt;you&gt;.github.io/CCIE-Automation</span></div>
+      <div class="info-item"><strong>Always accessible</strong> — even if EVE-NG is off</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- SUMMARY STATS -->
+<div class="summary">
+  <div class="summary-card">
+    <div class="num c-blue">16</div>
+    <div class="desc">Virtual Devices<br>in EVE-NG</div>
+  </div>
+  <div class="summary-card">
+    <div class="num c-yellow">5 min</div>
+    <div class="desc">Poll Interval<br>via Cron</div>
+  </div>
+  <div class="summary-card">
+    <div class="num c-purple">1</div>
+    <div class="desc">Python Script<br>monitor.py</div>
+  </div>
+  <div class="summary-card">
+    <div class="num c-green">5</div>
+    <div class="desc">Dashboard<br>Tabs</div>
+  </div>
+  <div class="summary-card">
+    <div class="num c-blue">3</div>
+    <div class="desc">OSPF<br>Areas (0/10/20)</div>
+  </div>
+  <div class="summary-card">
+    <div class="num" style="color:#f0883e">1</div>
+    <div class="desc">Lab Saved<br>lab01-ospf</div>
+  </div>
+</div>
+
+</body>
+</html>
