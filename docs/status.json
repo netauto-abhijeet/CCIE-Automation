@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "last_updated": "2026-03-19T14:26:17Z",
+    "last_updated": "2026-03-19T14:56:32Z",
     "collector": "monitor.py",
     "interval_minutes": 5
   },
@@ -129,13 +129,13 @@
           "network": "192.168.4.0/24"
         },
         {
-          "name": "SERVERS",
+          "name": "OPS",
           "leased": 0,
           "total": 254,
           "network": "192.168.5.0/24"
         },
         {
-          "name": "MGMT",
+          "name": "SERVERS",
           "leased": 0,
           "total": 254,
           "network": "192.168.6.0/24"
