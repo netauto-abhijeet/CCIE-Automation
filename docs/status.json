@@ -1,10 +1,60 @@
 {
   "_meta": {
-    "last_updated": "2026-03-19T15:04:26Z",
+    "last_updated": "2026-03-19T15:15:37Z",
     "collector": "monitor.py",
     "interval_minutes": 5
   },
   "devices": {
+    "Sw6": {
+      "status": "up",
+      "interfaces": [
+        {
+          "name": "Gi0/0",
+          "status": "connected"
+        },
+        {
+          "name": "Gi0/1",
+          "status": "connected"
+        },
+        {
+          "name": "Gi0/2",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi0/3",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/0",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/1",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/2",
+          "status": "notconnect"
+        },
+        {
+          "name": "Gi1/3",
+          "status": "notconnect"
+        }
+      ],
+      "connected_ports": 2
+    },
+    "VPC11": {
+      "status": "up",
+      "ip": "192.168.1.3/24",
+      "gateway": "192.168.1.1",
+      "mac": "00:50:79:66:68:0b"
+    },
+    "VPC16": {
+      "status": "up",
+      "ip": "192.168.6.2/24",
+      "gateway": "192.168.6.1",
+      "mac": "00:50:79:66:68:10"
+    },
     "R1": {
       "status": "up",
       "interfaces": [
@@ -84,6 +134,12 @@
         }
       ],
       "connected_ports": 2
+    },
+    "VPC14": {
+      "status": "up",
+      "ip": "192.168.4.2/24",
+      "gateway": "192.168.4.1",
+      "mac": "00:50:79:66:68:0e"
     },
     "R4": {
       "status": "up",
@@ -180,6 +236,12 @@
       ],
       "connected_ports": 2
     },
+    "VPC12": {
+      "status": "up",
+      "ip": "192.168.2.2/24",
+      "gateway": "192.168.2.1",
+      "mac": "00:50:79:66:68:0c"
+    },
     "Sw5": {
       "status": "up",
       "interfaces": [
@@ -255,6 +317,12 @@
         }
       ],
       "connected_ports": 2
+    },
+    "VPC15": {
+      "status": "up",
+      "ip": "192.168.5.2/24",
+      "gateway": "192.168.5.1",
+      "mac": "00:50:79:66:68:0f"
     },
     "R2": {
       "status": "up",
@@ -336,6 +404,12 @@
       ],
       "connected_ports": 2
     },
+    "VPC13": {
+      "status": "up",
+      "ip": "192.168.3.2/24",
+      "gateway": "192.168.3.1",
+      "mac": "00:50:79:66:68:0d"
+    },
     "R3": {
       "status": "up",
       "interfaces": [
@@ -392,44 +466,6 @@
           "network": "192.168.3.0/24"
         }
       ]
-    },
-    "Sw6": {
-      "status": "up",
-      "interfaces": [
-        {
-          "name": "Gi0/0",
-          "status": "connected"
-        },
-        {
-          "name": "Gi0/1",
-          "status": "connected"
-        },
-        {
-          "name": "Gi0/2",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi0/3",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/0",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/1",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/2",
-          "status": "notconnect"
-        },
-        {
-          "name": "Gi1/3",
-          "status": "notconnect"
-        }
-      ],
-      "connected_ports": 2
     }
   }
 }
