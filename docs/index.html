@@ -185,11 +185,32 @@
         </div>
         <div class="topo-legend">
           <h4>Legend</h4>
-          <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div>Area 0 (Backbone)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#3498db"></div>Area 10</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>Area 20</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#9b59b6"></div>L2 Switch</div>
-          <div class="legend-item"><div class="legend-dot" style="background:#555"></div>End Host</div>
+          <div class="legend-item">
+            <div style="width:14px;height:14px;border-radius:3px;background:#7d1f1f;border:2px solid #e74c3c;flex-shrink:0"></div>
+            <span>ABR Router</span>
+          </div>
+          <div class="legend-item">
+            <div style="width:14px;height:14px;border-radius:3px;background:#1a3a5c;border:2px solid #3498db;flex-shrink:0"></div>
+            <span>Router &mdash; Area 10</span>
+          </div>
+          <div class="legend-item">
+            <div style="width:14px;height:14px;border-radius:3px;background:#1a4a2e;border:2px solid #2ecc71;flex-shrink:0"></div>
+            <span>Router &mdash; Area 20</span>
+          </div>
+          <div class="legend-item" style="align-items:center">
+            <div style="width:13px;height:13px;background:#2d1b4e;border:2px solid #9b59b6;transform:rotate(45deg);flex-shrink:0"></div>
+            <span style="margin-left:3px">L2 Switch</span>
+          </div>
+          <div class="legend-item">
+            <div style="width:14px;height:14px;border-radius:50%;background:#162032;border:2px solid #4fc3f7;flex-shrink:0"></div>
+            <span>End Host (DHCP)</span>
+          </div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d;font-size:10px;line-height:2">
+            <span style="color:#e74c3c">&#9473; Area 0 backbone</span><br>
+            <span style="color:#3498db">&#9473; Area 10 links</span><br>
+            <span style="color:#2ecc71">&#9473; Area 20 links</span><br>
+            <span style="color:#4fc3f7">&#xB7;&#xB7;&#xB7; End host links</span>
+          </div>
         </div>
       </div>
     </div>
