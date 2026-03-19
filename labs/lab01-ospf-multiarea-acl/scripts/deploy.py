@@ -3,44 +3,72 @@
 Lab01 - OSPF Multi-Area + ACL Deploy Script
 ============================================
 Scenario: Branch Office Security Policy
-  192.168.1.0/24  Sw5/VPC11  = IT/Admin      (Area 10)
-  192.168.2.0/24  Sw6/VPC12  = HR            (Area 10)
-  192.168.3.0/24  Sw7/VPC13  = Guest WiFi    (Area 10)
-  192.168.4.0/24  Sw8/VPC14  = Finance       (Area 20)
-  192.168.5.0/24  Sw9/VPC15  = Operations    (Area 20)
-  192.168.6.0/24  Sw10/VPC16 = Servers       (Area 20)
 
-ACL Policy:
-  Standard ACL 10  → R4 Gi0/3 in  : Only IT can reach Servers
-  Standard ACL 20  → R4 Gi0/1 in  : Only IT+HR can reach Finance
-  Extended ACL 110 → R3 Gi0/3 in  : Guest blocked from ALL internal
-  Extended ACL 120 → R3 Gi0/2 in  : HR blocked from Finance (192.168.4.0)
+Topology:
+  Area 0 (backbone): R1 (12.0.0.1) ↔ R2 (12.0.0.2) via 12.0.0.0/24
+  Area 10:           R1 (13.0.0.1) ↔ R3 (13.0.0.3) via 13.0.0.0/24
+  Area 20:           R2 (24.0.0.2) ↔ R4 (24.0.0.4) via 24.0.0.0/24
+
+Access Networks (Area 10 — R3 serves DHCP):
+  192.168.1.0/24  R3 Gi0/1 → Sw5 → VPC11  = IT/Admin
+  192.168.2.0/24  R3 Gi0/2 → Sw6 → VPC12  = HR
+  192.168.3.0/24  R3 Gi0/3 → Sw7 → VPC13  = Guest WiFi
+
+Access Networks (Area 20 — R4 serves DHCP):
+  192.168.4.0/24  R4 Gi0/1 → Sw8 → VPC14  = Finance
+  192.168.5.0/24  R4 Gi0/2 → Sw9 → VPC15  = Servers/Operations
+  192.168.6.0/24  R4 Gi0/3 → Sw10 → VPC16 = MGMT
+
+Security Policy (ACLs):
+  Standard ACL 10  → R4 Gi0/3 in  : Only IT (192.168.1.0) can reach MGMT
+  Standard ACL 20  → R4 Gi0/1 in  : Only IT + HR can reach Finance
+  Extended ACL 110 → R3 Gi0/3 in  : Guest blocked from IT_ADMIN (192.168.1.0)
+  Extended ACL 120 → R3 Gi0/2 in  : HR blocked from Finance + MGMT Area20
+
+Design Principles:
+  - Switches are PURE L2 (no IP addresses, no routing, no DHCP)
+  - DHCP pools run on routers (R3 for Area 10, R4 for Area 20)
+  - Extended ACLs applied near SOURCE (R3 outbound subnets)
+  - Standard ACLs applied near DESTINATION (R4 inbound to servers)
+
+Telnet Access (via EVE-NG console ports):
+  R1:38727, R2:54203, R3:41967, R4:33599
+  Sw5:46457, Sw6:57373, Sw7:48741, Sw8:48381, Sw9:34575, Sw10:49197
+
+IMPORTANT: Use socket with proper telnet IAC negotiation + \\r\\n line endings.
+           telnetlib with just \\n does NOT work reliably for these vIOS devices.
 """
 
-from netmiko import ConnectHandler
+import socket
+import time
+import sys
 from datetime import datetime
-import time, sys, os
 
 EVENG_IP = "192.168.1.100"
 
 DEVICES = {
-    "R1": {"port": 38727, "type": "router"},
-    "R2": {"port": 54203, "type": "router"},
-    "R3": {"port": 41967, "type": "router"},
-    "R4": {"port": 33599, "type": "router"},
-    "Sw5":  {"port": 46457, "type": "switch", "dhcp_net": "192.168.1.0", "gw": "192.168.1.1"},
-    "Sw6":  {"port": 57373, "type": "switch", "dhcp_net": "192.168.2.0", "gw": "192.168.2.1"},
-    "Sw7":  {"port": 48741, "type": "switch", "dhcp_net": "192.168.3.0", "gw": "192.168.3.1"},
-    "Sw8":  {"port": 48381, "type": "switch", "dhcp_net": "192.168.4.0", "gw": "192.168.4.1"},
-    "Sw9":  {"port": 34575, "type": "switch", "dhcp_net": "192.168.5.0", "gw": "192.168.5.1"},
-    "Sw10": {"port": 49197, "type": "switch", "dhcp_net": "192.168.6.0", "gw": "192.168.6.1"},
+    "R1":  {"port": 38727, "type": "router"},
+    "R2":  {"port": 54203, "type": "router"},
+    "R3":  {"port": 41967, "type": "router"},
+    "R4":  {"port": 33599, "type": "router"},
+    "Sw5": {"port": 46457, "type": "switch"},
+    "Sw6": {"port": 57373, "type": "switch"},
+    "Sw7": {"port": 48741, "type": "switch"},
+    "Sw8": {"port": 48381, "type": "switch"},
+    "Sw9": {"port": 34575, "type": "switch"},
+    "Sw10":{"port": 49197, "type": "switch"},
 }
 
+# ─────────────────────────────────────────────────
+# ROUTER CONFIGURATIONS
+# ─────────────────────────────────────────────────
 ROUTER_CONFIGS = {
+
     "R1": [
         "hostname R1",
         "no ip domain-lookup",
-        "username cisco privilege 15 secret cisco",
+        "no logging console",
+        # Interfaces
         "interface GigabitEthernet0/0",
         " description AREA0-to-R2",
         " ip address 12.0.0.1 255.255.255.0",
@@ -49,18 +77,18 @@ ROUTER_CONFIGS = {
         " description AREA10-to-R3",
         " ip address 13.0.0.1 255.255.255.0",
         " no shutdown",
+        # OSPF
         "router ospf 10",
         " router-id 1.1.1.1",
         " network 12.0.0.0 0.0.0.255 area 0",
         " network 13.0.0.0 0.0.0.255 area 10",
-        "line vty 0 4",
-        " login local",
-        " transport input telnet ssh",
     ],
+
     "R2": [
         "hostname R2",
         "no ip domain-lookup",
-        "username cisco privilege 15 secret cisco",
+        "no logging console",
+        # Interfaces
         "interface GigabitEthernet0/0",
         " description AREA0-to-R1",
         " ip address 12.0.0.2 255.255.255.0",
@@ -69,24 +97,24 @@ ROUTER_CONFIGS = {
         " description AREA20-to-R4",
         " ip address 24.0.0.2 255.255.255.0",
         " no shutdown",
+        # OSPF
         "router ospf 10",
         " router-id 2.2.2.2",
         " network 12.0.0.0 0.0.0.255 area 0",
         " network 24.0.0.0 0.0.0.255 area 20",
-        "line vty 0 4",
-        " login local",
-        " transport input telnet ssh",
     ],
+
     "R3": [
         "hostname R3",
         "no ip domain-lookup",
-        "username cisco privilege 15 secret cisco",
+        "no logging console",
+        # Interfaces
         "interface GigabitEthernet0/0",
         " description AREA10-to-R1",
         " ip address 13.0.0.3 255.255.255.0",
         " no shutdown",
         "interface GigabitEthernet0/1",
-        " description IT-Admin-Sw5",
+        " description IT_ADMIN-Sw5",
         " ip address 192.168.1.1 255.255.255.0",
         " no shutdown",
         "interface GigabitEthernet0/2",
@@ -99,40 +127,48 @@ ROUTER_CONFIGS = {
         " ip address 192.168.3.1 255.255.255.0",
         " ip access-group 110 in",
         " no shutdown",
+        # OSPF
         "router ospf 10",
-        " router-id 3.3.3.3",
         " network 13.0.0.0 0.0.0.255 area 10",
         " network 192.168.1.0 0.0.0.255 area 10",
         " network 192.168.2.0 0.0.0.255 area 10",
         " network 192.168.3.0 0.0.0.255 area 10",
-        # Extended ACL 110 - Guest WiFi (Gi0/3 inbound)
-        # Block Guest from ALL internal subnets
+        # DHCP for Area 10
+        "ip dhcp excluded-address 192.168.1.1",
+        "ip dhcp excluded-address 192.168.2.1",
+        "ip dhcp excluded-address 192.168.3.1",
+        "ip dhcp pool IT_ADMIN",
+        " network 192.168.1.0 255.255.255.0",
+        " default-router 192.168.1.1",
+        " dns-server 8.8.8.8 8.8.4.4",
+        " lease 1",
+        "ip dhcp pool HR",
+        " network 192.168.2.0 255.255.255.0",
+        " default-router 192.168.2.1",
+        " dns-server 8.8.8.8 8.8.4.4",
+        " lease 1",
+        "ip dhcp pool GUEST",
+        " network 192.168.3.0 255.255.255.0",
+        " default-router 192.168.3.1",
+        " dns-server 8.8.8.8",
+        " lease 1",
+        # Extended ACLs (near source)
         "ip access-list extended 110",
-        " remark === GUEST WIFI POLICY - Applied R3 Gi0/3 inbound ===",
-        " deny   ip 192.168.3.0 0.0.0.255 192.168.1.0 0.0.0.255",
-        " deny   ip 192.168.3.0 0.0.0.255 192.168.2.0 0.0.0.255",
-        " deny   ip 192.168.3.0 0.0.0.255 192.168.4.0 0.0.0.255",
-        " deny   ip 192.168.3.0 0.0.0.255 192.168.5.0 0.0.0.255",
-        " deny   ip 192.168.3.0 0.0.0.255 192.168.6.0 0.0.0.255",
-        " deny   ip 192.168.3.0 0.0.0.255 13.0.0.0 0.0.0.255",
-        " deny   ip 192.168.3.0 0.0.0.255 24.0.0.0 0.0.0.255",
-        " deny   ip 192.168.3.0 0.0.0.255 12.0.0.0 0.0.0.255",
+        " remark GUEST blocked from IT_ADMIN",
+        " deny ip 192.168.3.0 0.0.0.255 192.168.1.0 0.0.0.255",
         " permit ip any any",
-        # Extended ACL 120 - HR (Gi0/2 inbound)
-        # Block HR from reaching Finance (192.168.4.0)
         "ip access-list extended 120",
-        " remark === HR POLICY - Applied R3 Gi0/2 inbound ===",
-        " deny   ip 192.168.2.0 0.0.0.255 192.168.4.0 0.0.0.255",
-        " deny   ip 192.168.2.0 0.0.0.255 192.168.6.0 0.0.0.255",
+        " remark HR blocked from Finance and MGMT",
+        " deny ip 192.168.2.0 0.0.0.255 192.168.4.0 0.0.0.255",
+        " deny ip 192.168.2.0 0.0.0.255 192.168.6.0 0.0.0.255",
         " permit ip any any",
-        "line vty 0 4",
-        " login local",
-        " transport input telnet ssh",
     ],
+
     "R4": [
         "hostname R4",
         "no ip domain-lookup",
-        "username cisco privilege 15 secret cisco",
+        "no logging console",
+        # Interfaces
         "interface GigabitEthernet0/0",
         " description AREA20-to-R2",
         " ip address 24.0.0.4 255.255.255.0",
@@ -143,165 +179,231 @@ ROUTER_CONFIGS = {
         " ip access-group 20 in",
         " no shutdown",
         "interface GigabitEthernet0/2",
-        " description Operations-Sw9",
+        " description Servers-Sw9",
         " ip address 192.168.5.1 255.255.255.0",
         " no shutdown",
         "interface GigabitEthernet0/3",
-        " description Servers-Sw10",
+        " description MGMT-Sw10",
         " ip address 192.168.6.1 255.255.255.0",
         " ip access-group 10 in",
         " no shutdown",
+        # OSPF
         "router ospf 10",
-        " router-id 4.4.4.4",
         " network 24.0.0.0 0.0.0.255 area 20",
         " network 192.168.4.0 0.0.0.255 area 20",
         " network 192.168.5.0 0.0.0.255 area 20",
         " network 192.168.6.0 0.0.0.255 area 20",
-        # Standard ACL 10 - Protect Servers (Gi0/3 inbound)
-        # Only IT/Admin (192.168.1.0) can reach Servers
-        "access-list 10 remark === SERVER PROTECTION - Applied R4 Gi0/3 inbound ===",
+        # DHCP for Area 20
+        "ip dhcp excluded-address 192.168.4.1",
+        "ip dhcp excluded-address 192.168.5.1",
+        "ip dhcp excluded-address 192.168.6.1",
+        "ip dhcp pool FINANCE",
+        " network 192.168.4.0 255.255.255.0",
+        " default-router 192.168.4.1",
+        " dns-server 8.8.8.8 8.8.4.4",
+        " lease 1",
+        "ip dhcp pool SERVERS",
+        " network 192.168.5.0 255.255.255.0",
+        " default-router 192.168.5.1",
+        " dns-server 8.8.8.8 8.8.4.4",
+        " lease 1",
+        "ip dhcp pool MGMT",
+        " network 192.168.6.0 255.255.255.0",
+        " default-router 192.168.6.1",
+        " dns-server 8.8.8.8 8.8.4.4",
+        " lease 1",
+        # Standard ACLs (near destination)
+        "access-list 10 remark === MGMT PROTECTION: Only IT allowed ===",
         "access-list 10 permit 192.168.1.0 0.0.0.255",
         "access-list 10 deny   any",
-        # Standard ACL 20 - Protect Finance (Gi0/1 inbound)
-        # Only IT (192.168.1.0) and HR (192.168.2.0) can reach Finance
-        "access-list 20 remark === FINANCE PROTECTION - Applied R4 Gi0/1 inbound ===",
+        "access-list 20 remark === FINANCE PROTECTION: IT + HR allowed ===",
         "access-list 20 permit 192.168.1.0 0.0.0.255",
         "access-list 20 permit 192.168.2.0 0.0.0.255",
         "access-list 20 deny   any",
-        "line vty 0 4",
-        " login local",
-        " transport input telnet ssh",
     ],
 }
 
-def connect_console(name, port):
-    """Connect to device via EVE-NG telnet console"""
-    device = {
-        'device_type': 'cisco_ios_telnet',
-        'host': EVENG_IP,
-        'port': port,
-        'username': '',
-        'password': '',
-        'secret': '',
-        'timeout': 60,
-        'global_delay_factor': 3,
-        'session_log': f'/tmp/{name}_session.log',
-    }
-    return ConnectHandler(**device)
+# ─────────────────────────────────────────────────
+# SWITCH CONFIGURATION (Pure L2)
+# ─────────────────────────────────────────────────
+SWITCH_CONFIG_BASE = [
+    "no ip routing",
+    "spanning-tree mode rapid-pvst",
+    "interface GigabitEthernet0/0",
+    " switchport",
+    " no shutdown",
+    "interface GigabitEthernet0/1",
+    " switchport",
+    " no shutdown",
+    "interface GigabitEthernet0/2",
+    " switchport",
+    " no shutdown",
+    "interface GigabitEthernet0/3",
+    " switchport",
+    " no shutdown",
+    "interface GigabitEthernet1/0",
+    " switchport",
+    " no shutdown",
+    "interface GigabitEthernet1/1",
+    " switchport",
+    " no shutdown",
+    "interface GigabitEthernet1/2",
+    " switchport",
+    " no shutdown",
+    "interface GigabitEthernet1/3",
+    " switchport",
+    " no shutdown",
+]
 
-def push_config(name, port, commands, device_type):
-    """Connect and push config to a device"""
-    print(f"\n{'='*55}")
-    print(f"  [{device_type.upper()}] {name}  →  {EVENG_IP}:{port}")
-    print(f"{'='*55}")
-    
+SWITCH_CONFIGS = {
+    "Sw5":  ["hostname Sw5"]  + SWITCH_CONFIG_BASE,
+    "Sw6":  ["hostname Sw6"]  + SWITCH_CONFIG_BASE,
+    "Sw7":  ["hostname Sw7"]  + SWITCH_CONFIG_BASE,
+    "Sw8":  ["hostname Sw8"]  + SWITCH_CONFIG_BASE,
+    "Sw9":  ["hostname Sw9"]  + SWITCH_CONFIG_BASE,
+    "Sw10": ["hostname Sw10"] + SWITCH_CONFIG_BASE,
+}
+
+
+# ─────────────────────────────────────────────────
+# TELNET ENGINE (Socket-based with IAC negotiation)
+# ─────────────────────────────────────────────────
+IAC_RESPONSE = bytes([
+    0xff, 0xfd, 0x01,   # IAC DO ECHO
+    0xff, 0xfd, 0x03,   # IAC DO SUPPRESS GO AHEAD
+    0xff, 0xfd, 0x00,   # IAC DO BINARY
+    0xff, 0xfb, 0x00,   # IAC WILL BINARY
+])
+
+def connect(host, port, timeout=20):
+    """Connect and negotiate telnet options."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((host, port))
+    s.settimeout(2)
+    time.sleep(1)
+    try: s.recv(4096)
+    except: pass
+    s.send(IAC_RESPONSE)
+    time.sleep(1)
+    try: s.recv(4096)
+    except: pass
+    return s
+
+def read_all(s, wait=2):
+    """Read all available data from socket."""
+    time.sleep(wait)
+    out = b''
+    while True:
+        try:
+            chunk = s.recv(4096)
+            out += chunk
+            time.sleep(0.2)
+        except socket.timeout:
+            break
+    return out.decode('ascii', errors='ignore')
+
+def send_cmd(s, cmd, wait=1.2):
+    """Send a single command and read response."""
+    s.send(cmd.encode() + b'\r\n')
+    return read_all(s, wait)
+
+def enable_device(s):
+    """Get device into privileged exec mode."""
+    # Wake
+    send_cmd(s, '', 0.5)
+    # Send enable
+    out = send_cmd(s, 'enable', 1.5)
+    if 'Password' in out:
+        # Try empty password first, then 'admin'
+        out2 = send_cmd(s, '', 1.5)
+        if 'Bad secrets' in out2 or 'Password' in out2:
+            out3 = send_cmd(s, 'admin', 1.5)
+            if '#' not in out3:
+                send_cmd(s, 'cisco', 1.5)
+    # Confirm mode
+    send_cmd(s, 'terminal length 0', 0.8)
+
+def push_config(s, commands, delay=0.8):
+    """Push config commands in global config mode."""
+    send_cmd(s, 'conf t', 1.0)
+    for cmd in commands:
+        out = send_cmd(s, cmd, delay)
+        # If we got kicked out of config mode somehow, re-enter
+        if '#' in out and 'config' not in out and cmd.startswith('interface'):
+            send_cmd(s, 'conf t', 1.0)
+            send_cmd(s, cmd, delay)
+    send_cmd(s, 'end', 1.0)
+
+def save_config(s):
+    """Save running config to NVRAM."""
+    s.send(b'write memory\r\n')
+    time.sleep(8)
+    out = read_all(s, 1)
+    return '[OK]' in out or 'OK' in out
+
+
+# ─────────────────────────────────────────────────
+# MAIN DEPLOY LOGIC
+# ─────────────────────────────────────────────────
+def deploy_device(name, port, config_cmds):
+    """Deploy config to a single device. Returns (success, message)."""
+    print(f"\n{'='*60}")
+    print(f"  Deploying: {name} (port {port})")
+    print(f"{'='*60}")
     try:
-        conn = connect_console(name, port)
-        
-        # Handle initial config dialog if present
-        output = conn.send_command_timing("", delay_factor=2)
-        if "initial configuration dialog" in output.lower():
-            conn.send_command_timing("no\n", delay_factor=2)
-        
-        # Get into enable/config mode
-        conn.send_command_timing("\n", delay_factor=1)
-        conn.enable()
-        
-        # Push all commands
-        output = conn.send_config_set(
-            commands,
-            cmd_verify=False,
-            delay_factor=2,
-            max_loops=1000,
-        )
-        
-        # Save config
-        conn.send_command_timing("end", delay_factor=1)
-        save = conn.send_command_timing("write memory", delay_factor=3)
-        conn.disconnect()
-        
-        print(f"  ✅ {name} — Config pushed & saved")
-        return True
-        
+        s = connect(EVENG_IP, port)
+        enable_device(s)
+        push_config(s, config_cmds)
+        saved = save_config(s)
+        s.close()
+        status = "✅ SAVED" if saved else "⚠️  NOT SAVED"
+        print(f"  {name}: {status}")
+        return True, status
     except Exception as e:
-        print(f"  ❌ {name} — FAILED: {e}")
-        return False
+        print(f"  {name}: ❌ ERROR - {e}")
+        return False, str(e)
 
-def build_switch_commands(name, dhcp_net, gw):
-    """Build switch config commands"""
-    netmask = "255.255.255.0"
-    return [
-        f"hostname {name}",
-        "no ip domain-lookup",
-        "username cisco privilege 15 secret cisco",
-        "ip routing",
-        f"ip dhcp excluded-address {gw}",
-        "ip dhcp pool LAN_POOL",
-        f" network {dhcp_net} {netmask}",
-        f" default-router {gw}",
-        " dns-server 8.8.8.8",
-        " lease 1",
-        "interface GigabitEthernet0/0",
-        " no switchport",
-        f" ip address {gw} {netmask}",
-        " no shutdown",
-        "line vty 0 4",
-        " login local",
-        " transport input telnet ssh",
-    ]
 
 def main():
-    start = datetime.now()
-    print("\n" + "🚀 " * 20)
-    print("  LAB01 - OSPF MULTI-AREA + ACL DEPLOYMENT")
-    print("  Branch Office Security Policy")
-    print("🚀 " * 20)
-    
-    results = {}
-    
-    # Deploy Routers
-    print("\n📡 PHASE 1: Deploying Routers (IPs + OSPF + ACLs)")
-    for name in ["R1", "R2", "R3", "R4"]:
-        d = DEVICES[name]
-        results[name] = push_config(name, d["port"], ROUTER_CONFIGS[name], "router")
-        time.sleep(2)
-    
-    # Deploy Switches
-    print("\n🔀 PHASE 2: Deploying Switches (DHCP Servers)")
-    for name in ["Sw5", "Sw6", "Sw7", "Sw8", "Sw9", "Sw10"]:
-        d = DEVICES[name]
-        cmds = build_switch_commands(name, d["dhcp_net"], d["gw"])
-        results[name] = push_config(name, d["port"], cmds, "switch")
-        time.sleep(2)
-    
-    # Summary
-    elapsed = (datetime.now() - start).seconds
-    passed = sum(1 for v in results.values() if v)
-    failed = sum(1 for v in results.values() if not v)
-    
-    print("\n" + "="*55)
-    print("  📊 DEPLOYMENT SUMMARY")
-    print("="*55)
-    for device, status in results.items():
-        icon = "✅" if status else "❌"
-        dtype = DEVICES[device]["type"].upper()
-        print(f"  {icon}  {device:<6}  [{dtype}]")
-    print("="*55)
-    print(f"  ✅ Passed: {passed}/10   ❌ Failed: {failed}/10")
-    print(f"  ⏱  Time: {elapsed}s")
-    print("="*55)
-    
-    print("\n📋 ACL POLICY APPLIED:")
-    print("  Standard  ACL 10  → R4 Gi0/3 in  : Servers  — IT only")
-    print("  Standard  ACL 20  → R4 Gi0/1 in  : Finance  — IT + HR only")
-    print("  Extended  ACL 110 → R3 Gi0/3 in  : Guest    — blocked from all internal")
-    print("  Extended  ACL 120 → R3 Gi0/2 in  : HR       — blocked from Finance + Servers")
-    
-    print("\n📋 VERIFY COMMANDS (run on routers after deploy):")
-    print("  show ip ospf neighbor          ← check OSPF adjacencies")
-    print("  show ip route ospf             ← check OSPF routes")
-    print("  show access-lists              ← check ACL hit counts")
-    print("  show ip interface gi0/3        ← check ACL applied on interface")
+    print("\n" + "="*60)
+    print("  LAB01 OSPF MULTI-AREA + ACL DEPLOY")
+    print(f"  Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("="*60)
 
-if __name__ == '__main__':
+    results = {}
+
+    # Phase 1: Routers
+    print("\n[PHASE 1] Configuring Routers (R1 → R4)")
+    for name in ["R1", "R2", "R3", "R4"]:
+        dev = DEVICES[name]
+        config = ROUTER_CONFIGS[name]
+        ok, msg = deploy_device(name, dev["port"], config)
+        results[name] = (ok, msg)
+
+    # Phase 2: Switches  
+    print("\n[PHASE 2] Configuring Switches (Sw5 → Sw10, Pure L2)")
+    for name in ["Sw5", "Sw6", "Sw7", "Sw8", "Sw9", "Sw10"]:
+        dev = DEVICES[name]
+        config = SWITCH_CONFIGS[name]
+        ok, msg = deploy_device(name, dev["port"], config)
+        results[name] = (ok, msg)
+
+    # Summary
+    print("\n" + "="*60)
+    print("  DEPLOY SUMMARY")
+    print("="*60)
+    all_ok = True
+    for name, (ok, msg) in results.items():
+        icon = "✅" if ok else "❌"
+        print(f"  {icon} {name:6s}: {msg}")
+        if not ok:
+            all_ok = False
+
+    print(f"\n  {'ALL DEVICES DEPLOYED SUCCESSFULLY' if all_ok else 'SOME DEVICES FAILED'}")
+    print(f"  Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("="*60)
+    sys.exit(0 if all_ok else 1)
+
+
+if __name__ == "__main__":
     main()
