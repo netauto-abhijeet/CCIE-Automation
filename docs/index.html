@@ -368,7 +368,7 @@ function renderTopology() {
     area20:     { shape:'box',    color:{background:'#1a4a2e',border:'#2ecc71'}, font:{color:'#fff',size:13,bold:true}, size:28 },
     switch_a10: { shape:'diamond',color:{background:'#2d1b4e',border:'#9b59b6'}, font:{color:'#c9d1d9',size:11}, size:18 },
     switch_a20: { shape:'diamond',color:{background:'#2d1b4e',border:'#9b59b6'}, font:{color:'#c9d1d9',size:11}, size:18 },
-    vpc:        { shape:'dot',    color:{background:'#444',border:'#666'},        font:{color:'#888',size:10}, size:10 },
+    vpc:        { shape:'dot',    color:{background:'#162032',border:'#4fc3f7'}, font:{color:'#7eccea',size:10}, size:12 },
   };
 
   const nodes = topoData.nodes.map(n => {
@@ -390,22 +390,22 @@ function renderTopology() {
 
   // Fixed positions for clean layout
   const positions = {
-    R1:    {x:0,    y:-60},
-    R2:    {x:300,  y:-60},
-    R3:    {x:-150, y:50},
-    R4:    {x:450,  y:50},
-    Sw5:   {x:-300, y:220},
-    Sw6:   {x:-150, y:220},
-    Sw7:   {x:0,    y:220},
-    Sw8:   {x:300,  y:220},
-    Sw9:   {x:450,  y:220},
-    Sw10:  {x:600,  y:220},
-    VPC11: {x:-300, y:360},
-    VPC12: {x:-150, y:360},
-    VPC13: {x:0,    y:360},
-    VPC14: {x:300,  y:360},
-    VPC15: {x:450,  y:360},
-    VPC16: {x:600,  y:360},
+    R1:    {x:50,   y:-80},
+    R2:    {x:650,  y:-80},
+    R3:    {x:-200, y:60},
+    R4:    {x:900,  y:60},
+    Sw5:   {x:-550, y:250},
+    Sw6:   {x:-200, y:250},
+    Sw7:   {x:150,  y:250},
+    Sw8:   {x:550,  y:250},
+    Sw9:   {x:900,  y:250},
+    Sw10:  {x:1250, y:250},
+    VPC11: {x:-550, y:400},
+    VPC12: {x:-200, y:400},
+    VPC13: {x:150,  y:400},
+    VPC14: {x:550,  y:400},
+    VPC15: {x:900,  y:400},
+    VPC16: {x:1250, y:400},
   };
   nodes.forEach(n => { if(positions[n.id]) { n.x = positions[n.id].x; n.y = positions[n.id].y; n.physics = false; } });
 
@@ -618,7 +618,7 @@ function inferArea(router, iface) {
 function renderAclTab() {
   // Traffic matrix
   const sources = ['IT/Admin\n192.168.1.x','HR\n192.168.2.x','Guest\n192.168.3.x'];
-  const dests   = ['Finance\n192.168.4.x','Servers\n192.168.5.x','MGMT\n192.168.6.x','IT/Admin\n192.168.1.x','Other'];
+  const dests   = ['Finance\n192.168.4.x','Ops\n192.168.5.x','Servers\n192.168.6.x','IT/Admin\n192.168.1.x','Other'];
   const matrix  = [
     ['allow','allow','allow','—','allow'],
     ['allow','allow','deny', '—','allow'],
@@ -674,12 +674,14 @@ function renderDhcpTab() {
     card.innerHTML = `<h4 style="color:${router==='R3'?'var(--blue)':'var(--green)'}">
       ${router} — ${router==='R3'?'Area 10':'Area 20'}</h4>`;
     dev.dhcp_pools.forEach(p => {
-      const pct = Math.round(p.leased / p.total * 100);
-      const cls = pct > 80 ? 'high' : pct > 50 ? 'medium' : 'low';
+      const total = p.total || 254;  // default 254 if missing
+      const pct   = Math.round((p.leased / total) * 100) || 0;  // NaN → 0
+      const cls   = pct > 80 ? 'high' : pct > 50 ? 'medium' : 'low';
+      const net   = p.network || '—';
       card.innerHTML += `<div class="dhcp-pool">
         <div class="dhcp-pool-name">
-          <span><b>${p.name}</b> <span style="color:var(--text2);font-size:11px">${p.network}</span></span>
-          <span style="color:var(--text2)">${p.leased} / ${p.total} leased</span>
+          <span><b>${p.name}</b> <span style="color:var(--text2);font-size:11px">${net}</span></span>
+          <span style="color:var(--text2)">${p.leased} / ${total} leased</span>
         </div>
         <div class="progress-bar"><div class="progress-fill ${cls}" style="width:${Math.max(pct,1)}%"></div></div>
         <div style="font-size:11px;color:var(--text2);margin-top:2px">${pct}% utilized</div>
