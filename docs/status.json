@@ -1,6 +1,6 @@
 {
   "_meta": {
-    "last_updated": "2026-03-19T14:56:32Z",
+    "last_updated": "2026-03-19T15:04:26Z",
     "collector": "monitor.py",
     "interval_minutes": 5
   },
@@ -124,19 +124,19 @@
       "dhcp_pools": [
         {
           "name": "FINANCE",
-          "leased": 0,
+          "leased": 1,
           "total": 254,
           "network": "192.168.4.0/24"
         },
         {
           "name": "OPS",
-          "leased": 0,
+          "leased": 1,
           "total": 254,
           "network": "192.168.5.0/24"
         },
         {
           "name": "SERVERS",
-          "leased": 0,
+          "leased": 1,
           "total": 254,
           "network": "192.168.6.0/24"
         }
@@ -375,19 +375,19 @@
       "dhcp_pools": [
         {
           "name": "IT_ADMIN",
-          "leased": 1,
+          "leased": 2,
           "total": 254,
           "network": "192.168.1.0/24"
         },
         {
           "name": "HR",
-          "leased": 0,
+          "leased": 1,
           "total": 254,
           "network": "192.168.2.0/24"
         },
         {
           "name": "GUEST",
-          "leased": 0,
+          "leased": 1,
           "total": 254,
           "network": "192.168.3.0/24"
         }
