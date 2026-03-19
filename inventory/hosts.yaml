@@ -1,8 +1,0 @@
-# hosts.yaml - Add your lab devices here
-# Example:
-# R1:
-#   hostname: 192.168.1.1
-#   groups:
-#     - cisco_ios
-#   data:
-#     site: lab

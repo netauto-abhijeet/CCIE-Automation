@@ -1,0 +1,74 @@
+hostname {{ inventory_hostname }}
+!
+no ip domain-lookup
+ip domain-name lab.local
+!
+{% if data.area0_ip is defined %}
+interface GigabitEthernet0/0
+ ip address {{ data.area0_ip | ipaddr('address') }} {{ data.area0_ip | ipaddr('netmask') }}
+ no shutdown
+!
+{% endif %}
+{% if data.area10_ip is defined and data.role == 'ABR' %}
+interface GigabitEthernet0/1
+ ip address {{ data.area10_ip | ipaddr('address') }} {{ data.area10_ip | ipaddr('netmask') }}
+ no shutdown
+!
+{% endif %}
+{% if data.area20_ip is defined and data.role == 'ABR' %}
+interface GigabitEthernet0/1
+ ip address {{ data.area20_ip | ipaddr('address') }} {{ data.area20_ip | ipaddr('netmask') }}
+ no shutdown
+!
+{% endif %}
+{% if data.role == 'internal' %}
+{% if data.area10_ip is defined %}
+interface GigabitEthernet0/0
+ ip address {{ data.area10_ip | ipaddr('address') }} {{ data.area10_ip | ipaddr('netmask') }}
+ no shutdown
+!
+{% endif %}
+{% if data.area20_ip is defined %}
+interface GigabitEthernet0/0
+ ip address {{ data.area20_ip | ipaddr('address') }} {{ data.area20_ip | ipaddr('netmask') }}
+ no shutdown
+!
+{% endif %}
+interface GigabitEthernet0/1
+ ip address {{ data.gi01_ip | ipaddr('address') }} {{ data.gi01_ip | ipaddr('netmask') }}
+ no shutdown
+!
+interface GigabitEthernet0/2
+ ip address {{ data.gi02_ip | ipaddr('address') }} {{ data.gi02_ip | ipaddr('netmask') }}
+ no shutdown
+!
+interface GigabitEthernet0/3
+ ip address {{ data.gi03_ip | ipaddr('address') }} {{ data.gi03_ip | ipaddr('netmask') }}
+ no shutdown
+!
+{% endif %}
+router ospf 10
+ router-id {{ data.area0_ip | default(data.area10_ip) | default(data.area20_ip) | ipaddr('address') }}
+{% if data.ospf_area0 is defined %}
+{% for net in data.ospf_area0 %}
+ network {{ net }} 0.0.0.255 area 0
+{% endfor %}
+{% endif %}
+{% if data.ospf_area10 is defined %}
+{% for net in data.ospf_area10 %}
+ network {{ net }} 0.0.0.255 area 10
+{% endfor %}
+{% endif %}
+{% if data.ospf_area20 is defined %}
+{% for net in data.ospf_area20 %}
+ network {{ net }} 0.0.0.255 area 20
+{% endfor %}
+{% endif %}
+!
+line vty 0 4
+ login local
+ transport input telnet ssh
+!
+username cisco privilege 15 secret cisco
+crypto key generate rsa modulus 1024
+ip ssh version 2

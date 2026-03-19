@@ -1,28 +1,25 @@
-# CCIE Automation Class - Workspace
+# CCIE Automation - Workspace
 
-## Directory Structure
-- **labs/**        → Lab exercises from class
-- **assignments/** → Homework and assignments
-- **scripts/**     → Python scripts and tools
-- **configs/**     → Device configuration files
-- **templates/**   → Jinja2 templates for config generation
-- **inventory/**   → Device inventory (hosts.yaml, groups.yaml)
-- **notes/**       → Study notes and documentation
+## Structure
+```
+labs/                        # One folder per lab - fully self-contained
+  lab01-ospf-multiarea/      # OSPF 10 multi-area topology
+    inventory/               # Device list and credentials
+    templates/               # Jinja2 config templates
+    configs/                 # Generated configs (auto-created)
+    scripts/                 # deploy.py and other scripts
+    README.md                # Lab description and instructions
+
+assignments/                 # One folder per assignment
+  assignment01-netmiko-basics/
+
+notes/                       # Study notes (shared)
+common/                      # Shared utilities reused across labs
+```
 
 ## Quick Start
 ```bash
-cd ~/CCIE-Automation
-python3 script.py
+# Deploy Lab 01
+cd labs/lab01-ospf-multiarea
+python3 scripts/deploy.py
 ```
-
-## Key Packages Installed
-- netmiko   — SSH to network devices (Cisco, Juniper, Arista...)
-- napalm    — Multi-vendor network automation
-- nornir    — Network automation framework
-- pyats     — Cisco pyATS testing framework
-- genie     — Cisco Genie parsers
-- jinja2    — Config template engine
-- ntc-templates — TextFSM templates for show commands
-- ciscoconfparse — Parse/audit Cisco configs
-- scapy     — Packet crafting
-- ansible   — (install separately if needed)

@@ -1,0 +1,22 @@
+hostname {{ inventory_hostname }}
+!
+no ip domain-lookup
+!
+ip dhcp excluded-address {{ data.gateway }}
+!
+ip dhcp pool LAN_POOL
+ network {{ data.dhcp_pool | ipaddr('network') }} {{ data.dhcp_pool | ipaddr('netmask') }}
+ default-router {{ data.gateway }}
+ dns-server 8.8.8.8
+ lease 1
+!
+interface GigabitEthernet0/0
+ no switchport
+ ip address {{ data.gateway }} {{ data.dhcp_pool | ipaddr('netmask') }}
+ no shutdown
+!
+line vty 0 4
+ login local
+ transport input telnet ssh
+!
+username cisco privilege 15 secret cisco
