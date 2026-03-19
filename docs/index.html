@@ -390,8 +390,8 @@ function renderTopology() {
 
   // Fixed positions for clean layout
   const positions = {
-    R1:    {x:0,    y:-150},
-    R2:    {x:300,  y:-150},
+    R1:    {x:0,    y:-60},
+    R2:    {x:300,  y:-60},
     R3:    {x:-150, y:50},
     R4:    {x:450,  y:50},
     Sw5:   {x:-300, y:220},
@@ -433,9 +433,10 @@ function renderTopology() {
   );
 
   setTimeout(() => {
-    visNetwork.setSize('100%', (document.getElementById('topology-container').offsetHeight || 500) + 'px');
-    visNetwork.fit();
-  }, 200);
+    const h = document.getElementById('topology-container').offsetHeight || 500;
+    visNetwork.setSize('100%', h + 'px');
+    visNetwork.fit({animation: false});
+  }, 300);
 
   visNetwork.on('click', params => {
     if (params.nodes.length > 0) showDeviceDetail(params.nodes[0]);
@@ -443,23 +444,26 @@ function renderTopology() {
 }
 
 function buildNodeTooltip(n, status) {
-  let html = `<div style="background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:12px;max-width:250px;color:#c9d1d9">`;
-  html += `<b style="font-size:14px;color:#58a6ff">${n.id}</b>`;
-  if (n.group === 'abr') html += ` <span style="color:#e74c3c;font-size:11px">ABR</span>`;
-  html += `<br><span style="color:#8b949e">${n.title || ''}</span>`;
-  if (status?.status) {
-    html += `<br><span style="color:${status.status==='up'?'#3fb950':'#f85149'}">● ${status.status.toUpperCase()}</span>`;
-  }
+  // vis.js 4.x requires a DOM element for rendered HTML tooltips
+  const div = document.createElement('div');
+  div.style.cssText = 'background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:12px;max-width:220px;color:#c9d1d9;line-height:1.7;font-family:system-ui,sans-serif';
+  let inner = `<b style="font-size:13px;color:#58a6ff">${n.id}</b>`;
+  if (n.group === 'abr') inner += ` <span style="color:#e74c3c;font-size:10px;font-weight:700;background:rgba(231,76,60,0.15);padding:1px 5px;border-radius:3px">ABR</span>`;
+  if (status?.status) inner += ` <span style="color:${status.status==='up'?'#3fb950':'#f85149'};font-size:11px">● ${status.status.toUpperCase()}</span>`;
   if (n.interfaces) {
-    html += `<br><br><b style="color:#8b949e">INTERFACES</b>`;
+    inner += `<div style="margin-top:7px;padding-top:7px;border-top:1px solid #30363d"><span style="color:#8b949e;font-size:10px;text-transform:uppercase;letter-spacing:0.5px">Interfaces</span>`;
     n.interfaces.forEach(i => {
-      html += `<br><code style="color:#ffa657">${i.name}</code> ${i.ip}`;
+      inner += `<div style="font-family:monospace;font-size:11px;margin-top:2px"><span style="color:#ffa657">${i.name.replace('GigabitEthernet','Gi')}</span> <span style="color:#c9d1d9">${i.ip}</span></div>`;
     });
+    inner += `</div>`;
   }
-  if (n.subnet) html += `<br>Subnet: <code>${n.subnet}</code>`;
-  if (n.role) html += `<br>Zone: <b>${n.role}</b>`;
-  html += '</div>';
-  return html;
+  if (n.subnet) inner += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #30363d;font-size:11px">Subnet: <code style="color:#ffa657">${n.subnet}</code></div>`;
+  if (n.role)   inner += `<div style="font-size:11px">Zone: <b style="color:#58a6ff">${n.role}</b></div>`;
+  if (n.acls?.length) {
+    inner += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #30363d">` + n.acls.map(a => `<div style="color:#f0883e;font-size:11px">🔒 ${a}</div>`).join('') + `</div>`;
+  }
+  div.innerHTML = inner;
+  return div;
 }
 
 // ── DEVICE DETAIL (sidebar) ────────────────────────────
