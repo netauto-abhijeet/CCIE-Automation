@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CCIE Automation Lab — Network Dashboard</title>
+  <script src="https://unpkg.com/vis-network@9.1.9/dist/vis-network.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/vis-network@9.1.9/dist/dist/vis-network.min.css">
+  <style>
+    :root {
+      --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+      --border: #30363d; --text: #c9d1d9; --text2: #8b949e;
+      --green: #3fb950; --red: #f85149; --yellow: #d29922;
+      --blue: #58a6ff; --purple: #bc8cff; --orange: #ffa657;
+      --area0: #e74c3c; --area10: #3498db; --area20: #2ecc71;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+
+    /* HEADER */
+    header {
+      background: linear-gradient(135deg, #0d1117 0%, #1a2332 50%, #0d1117 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .header-left h1 { font-size: 20px; font-weight: 700; color: var(--blue); }
+    .header-left h1 span { color: var(--text2); font-weight: 400; font-size: 14px; margin-left: 12px; }
+    .header-right { display: flex; gap: 12px; align-items: center; }
+    .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; }
+    .badge-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+    .badge-blue  { background: rgba(88,166,255,0.15); color: var(--blue);  border: 1px solid rgba(88,166,255,0.3); }
+    .last-updated { color: var(--text2); font-size: 12px; }
+    .pulse { display: inline-block; width: 8px; height: 8px; background: var(--green); border-radius: 50%;
+             animation: pulse 2s infinite; margin-right: 6px; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+
+    /* LAYOUT */
+    .layout { display: grid; grid-template-columns: 1fr 340px; grid-template-rows: auto; gap: 0; height: calc(100vh - 65px); }
+
+    /* TABS */
+    .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); background: var(--bg2); padding: 0 16px; }
+    .tab { padding: 10px 18px; cursor: pointer; font-size: 13px; color: var(--text2); border-bottom: 2px solid transparent;
+           transition: all 0.2s; user-select: none; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+    /* MAIN PANEL */
+    .main { display: flex; flex-direction: column; border-right: 1px solid var(--border); overflow: hidden; }
+    .tab-content { display: none; flex: 1; overflow: hidden; }
+    .tab-content.active { display: flex; flex-direction: column; }
+
+    /* TOPOLOGY */
+    #topology-container { flex: 1; position: relative; }
+    #network { width: 100%; height: 100%; background: var(--bg); }
+    .topo-legend { position: absolute; bottom: 16px; left: 16px; background: rgba(13,17,23,0.92);
+                   border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    .topo-legend h4 { font-size: 11px; color: var(--text2); margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 12px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .topo-controls { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .topo-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 6px 10px;
+                border-radius: 6px; cursor: pointer; font-size: 12px; transition: background 0.2s; }
+    .topo-btn:hover { background: var(--border); }
+
+    /* TABLES */
+    .panel-scroll { flex: 1; overflow-y: auto; padding: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 8px 12px; color: var(--text2); font-size: 11px; letter-spacing: 0.5px;
+         text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--bg2); }
+    td { padding: 8px 12px; border-bottom: 1px solid rgba(48,54,61,0.5); vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .status-up   { color: var(--green); font-weight: 600; }
+    .status-down { color: var(--red);   font-weight: 600; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .tag-abr    { background: rgba(231,76,60,0.2);  color: #e74c3c; }
+    .tag-area10 { background: rgba(52,152,219,0.2); color: #3498db; }
+    .tag-area20 { background: rgba(46,204,113,0.2); color: #2ecc71; }
+    .tag-sw     { background: rgba(155,89,182,0.2); color: #9b59b6; }
+    .tag-deny   { background: rgba(248,81,73,0.15);  color: var(--red);   }
+    .tag-permit { background: rgba(63,185,80,0.15);  color: var(--green); }
+
+    /* SIDEBAR */
+    .sidebar { background: var(--bg2); overflow-y: auto; display: flex; flex-direction: column; }
+    .sidebar-section { border-bottom: 1px solid var(--border); padding: 16px; }
+    .sidebar-section h3 { font-size: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+    /* STATS CARDS */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .stat-card .num { font-size: 24px; font-weight: 700; line-height: 1; }
+    .stat-card .lbl { font-size: 11px; color: var(--text2); margin-top: 3px; }
+    .stat-card.green .num { color: var(--green); }
+    .stat-card.blue  .num { color: var(--blue);  }
+    .stat-card.orange .num{ color: var(--orange);}
+    .stat-card.purple .num{ color: var(--purple);}
+
+    /* DEVICE DETAIL PANEL */
+    #device-detail { padding: 16px; }
+    #device-detail h3 { color: var(--blue); margin-bottom: 12px; }
+    .detail-section { margin-bottom: 14px; }
+    .detail-section h4 { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; border-top: 1px solid var(--border); padding-top: 8px; }
+    .detail-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
+    .detail-row span:first-child { color: var(--text2); }
+
+    /* OSPF */
+    .ospf-full { color: var(--green); font-weight: 600; }
+    .area-chip { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; margin: 1px; }
+    .area-0  { background: rgba(231,76,60,0.2);  color: #e74c3c; }
+    .area-10 { background: rgba(52,152,219,0.2); color: #3498db; }
+    .area-20 { background: rgba(46,204,113,0.2); color: #2ecc71; }
+
+    /* DHCP bars */
+    .dhcp-pool { margin-bottom: 10px; }
+    .dhcp-pool-name { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+    .progress-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 3px; background: var(--blue); transition: width 0.5s; }
+    .progress-fill.low    { background: var(--green); }
+    .progress-fill.medium { background: var(--yellow); }
+    .progress-fill.high   { background: var(--red); }
+
+    /* ACL MATRIX */
+    .acl-matrix { width: 100%; border-collapse: collapse; font-size: 11px; }
+    .acl-matrix th, .acl-matrix td { padding: 5px 8px; border: 1px solid var(--border); text-align: center; }
+    .acl-matrix th { background: var(--bg3); color: var(--text2); }
+    .acl-cell-allow { background: rgba(63,185,80,0.15); color: var(--green); font-weight: 600; }
+    .acl-cell-deny  { background: rgba(248,81,73,0.12); color: var(--red);   font-weight: 600; }
+    .acl-cell-na    { color: var(--text2); }
+    .section-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .section-sub   { font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+    .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+    .card h4 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text); }
+    .rule-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid rgba(48,54,61,0.4); font-size: 12px; }
+    .rule-row:last-child { border-bottom: none; }
+    .arrow { color: var(--text2); }
+    .no-select { pointer-events: none; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; grid-template-rows: 60vh auto; }
+      .sidebar { max-height: 50vh; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>🌐 CCIE Automation Lab
+      <span>OSPF Multi-Area + ACL Branch Security</span>
+    </h1>
+  </div>
+  <div class="header-right">
+    <span class="badge badge-green"><span class="pulse"></span>LIVE</span>
+    <span class="badge badge-blue">OSPF Process 10</span>
+    <span class="last-updated">Updated: <span id="last-update-time">loading...</span></span>
+    <a href="https://github.com/netauto-abhijeet/CCIE-Automation" target="_blank"
+       style="color:var(--text2);font-size:12px;text-decoration:none;">⬡ GitHub</a>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- MAIN PANEL -->
+  <div class="main">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('topology')">🗺 Topology</div>
+      <div class="tab" onclick="switchTab('devices')">📡 Devices</div>
+      <div class="tab" onclick="switchTab('ospf')">🔁 OSPF</div>
+      <div class="tab" onclick="switchTab('acl')">🔒 ACL Policy</div>
+      <div class="tab" onclick="switchTab('dhcp')">📦 DHCP</div>
+    </div>
+
+    <!-- TOPOLOGY TAB -->
+    <div class="tab-content active" id="tab-topology">
+      <div id="topology-container">
+        <div id="network"></div>
+        <div class="topo-controls">
+          <button class="topo-btn" onclick="network.fit()">⊡ Fit</button>
+          <button class="topo-btn" onclick="network.zoomIn(0.3)">＋</button>
+          <button class="topo-btn" onclick="network.zoomOut(0.3)">－</button>
+        </div>
+        <div class="topo-legend">
+          <h4>Legend</h4>
+          <div class="legend-item"><div class="legend-dot" style="background:#e74c3c"></div>Area 0 (Backbone)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3498db"></div>Area 10</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>Area 20</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#9b59b6"></div>L2 Switch</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#555"></div>End Host</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEVICES TAB -->
+    <div class="tab-content" id="tab-devices">
+      <div class="panel-scroll">
+        <p class="section-title">Device Inventory</p>
+        <p class="section-sub">All 10 nodes in EVE-NG lab • Click a row to inspect</p>
+        <table id="devices-table">
+          <thead><tr><th>Device</th><th>Role</th><th>IP(s)</th><th>Status</th><th>OSPF Neighbors</th><th>Console Port</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- OSPF TAB -->
+    <div class="tab-content" id="tab-ospf">
+      <div class="panel-scroll">
+        <p class="section-title">OSPF Process 10 — Neighbor Table</p>
+        <p class="section-sub">Multi-area OSPF • Area 0 backbone • Areas 10 and 20</p>
+        <table id="ospf-table">
+          <thead><tr><th>Router</th><th>Neighbor ID</th><th>State</th><th>Interface</th><th>Area</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div style="margin-top:20px">
+          <p class="section-title" style="font-size:14px">Route Summary from R1</p>
+          <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="route-cards"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACL TAB -->
+    <div class="tab-content" id="tab-acl">
+      <div class="panel-scroll">
+        <p class="section-title">Branch Office Security Policy</p>
+        <p class="section-sub">Extended ACLs near source (R3) • Standard ACLs near destination (R4)</p>
+
+        <p style="font-size:13px;font-weight:600;margin:16px 0 8px;color:var(--text2)">Traffic Matrix</p>
+        <table class="acl-matrix" id="acl-matrix"></table>
+
+        <p style="font-size:13px;font-weight:600;margin:20px 0 8px;color:var(--text2)">ACL Details</p>
+        <div id="acl-cards"></div>
+      </div>
+    </div>
+
+    <!-- DHCP TAB -->
+    <div class="tab-content" id="tab-dhcp">
+      <div class="panel-scroll">
+        <p class="section-title">DHCP Pool Status</p>
+        <p class="section-sub">R3 serves Area 10 • R4 serves Area 20 • Gateways excluded</p>
+        <div id="dhcp-content" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <h3>📊 Summary</h3>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card green"><div class="num" id="stat-up">—</div><div class="lbl">Devices Up</div></div>
+        <div class="stat-card blue"><div class="num" id="stat-ospf">—</div><div class="lbl">OSPF Neighbors</div></div>
+        <div class="stat-card orange"><div class="num">4</div><div class="lbl">ACLs Active</div></div>
+        <div class="stat-card purple"><div class="num">6</div><div class="lbl">DHCP Pools</div></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>🔗 Areas</h3>
+      <div style="font-size:12px">
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+          <span><span class="area-chip area-0">Area 0</span> Backbone</span>
+          <span style="color:var(--text2)">12.0.0.0/24</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+          <span><span class="area-chip area-10">Area 10</span> Branch A</span>
+          <span style="color:var(--text2)">13.0.0.0/24</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:5px 0">
+          <span><span class="area-chip area-20">Area 20</span> Branch B</span>
+          <span style="color:var(--text2)">24.0.0.0/24</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section" id="device-detail-panel">
+      <h3>🖥 Device Detail</h3>
+      <div id="device-detail" style="font-size:12px;color:var(--text2);text-align:center;padding:20px 0">
+        Click a device in the topology or table to inspect it
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>⚙️ Lab Info</h3>
+      <div style="font-size:12px;line-height:1.7">
+        <div class="detail-row"><span>Platform</span><span>EVE-NG PRO</span></div>
+        <div class="detail-row"><span>Image</span><span>vIOS 15.6</span></div>
+        <div class="detail-row"><span>OSPF Process</span><span>10</span></div>
+        <div class="detail-row"><span>Routers</span><span>R1, R2, R3, R4</span></div>
+        <div class="detail-row"><span>Switches</span><span>Sw5–Sw10 (L2)</span></div>
+        <div class="detail-row"><span>End Hosts</span><span>VPC11–VPC16</span></div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+          <a href="https://github.com/netauto-abhijeet/CCIE-Automation/tree/main/labs/lab01-ospf-multiarea-acl"
+             target="_blank" style="color:var(--blue);text-decoration:none;font-size:12px">
+            📁 View Lab Files on GitHub →
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let topoData = null, statusData = null, visNetwork = null;
+
+// ── TAB SWITCHING ──────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'topology' && visNetwork) setTimeout(() => visNetwork.fit(), 100);
+}
+
+// ── DATA LOADING ───────────────────────────────────────
+async function loadData() {
+  try {
+    const [tRes, sRes] = await Promise.all([
+      fetch('topology.json?t=' + Date.now()),
+      fetch('status.json?t=' + Date.now())
+    ]);
+    topoData = await tRes.json();
+    statusData = await sRes.json();
+    renderAll();
+  } catch(e) {
+    console.error('Load error:', e);
+  }
+}
+
+function renderAll() {
+  updateTimestamp();
+  renderStats();
+  renderTopology();
+  renderDevicesTable();
+  renderOspfTable();
+  renderAclTab();
+  renderDhcpTab();
+}
+
+// ── TIMESTAMP ─────────────────────────────────────────
+function updateTimestamp() {
+  const ts = statusData._meta?.last_updated;
+  if (!ts) return;
+  const d = new Date(ts);
+  document.getElementById('last-update-time').textContent =
+    d.toLocaleString('en-US', {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'});
+}
+
+// ── STATS ─────────────────────────────────────────────
+function renderStats() {
+  const devs = statusData.devices;
+  const up = Object.values(devs).filter(d => d.status === 'up').length;
+  const neighbors = Object.values(devs)
+    .filter(d => d.ospf_neighbors)
+    .reduce((sum, d) => sum + d.ospf_neighbors.length, 0);
+  document.getElementById('stat-up').textContent = up + '/' + Object.keys(devs).length;
+  document.getElementById('stat-ospf').textContent = neighbors;
+}
+
+// ── TOPOLOGY ──────────────────────────────────────────
+function renderTopology() {
+  const nodeGroups = {
+    abr:        { shape:'box',    color:{background:'#7d1f1f',border:'#e74c3c'}, font:{color:'#fff',size:13,bold:true}, size:28 },
+    area10:     { shape:'box',    color:{background:'#1a3a5c',border:'#3498db'}, font:{color:'#fff',size:13,bold:true}, size:28 },
+    area20:     { shape:'box',    color:{background:'#1a4a2e',border:'#2ecc71'}, font:{color:'#fff',size:13,bold:true}, size:28 },
+    switch_a10: { shape:'diamond',color:{background:'#2d1b4e',border:'#9b59b6'}, font:{color:'#c9d1d9',size:11}, size:18 },
+    switch_a20: { shape:'diamond',color:{background:'#2d1b4e',border:'#9b59b6'}, font:{color:'#c9d1d9',size:11}, size:18 },
+    vpc:        { shape:'dot',    color:{background:'#444',border:'#666'},        font:{color:'#888',size:10}, size:10 },
+  };
+
+  const nodes = topoData.nodes.map(n => {
+    const devStatus = statusData.devices[n.id];
+    const isUp = devStatus?.status === 'up';
+    const grp = nodeGroups[n.group] || {};
+    return {
+      id: n.id, label: n.label,
+      ...grp,
+      borderWidth: isUp ? 2 : 3,
+      color: devStatus ? {
+        ...grp.color,
+        border: isUp ? grp.color?.border : '#f85149',
+        background: isUp ? grp.color?.background : '#3d1515'
+      } : grp.color,
+      title: buildNodeTooltip(n, devStatus)
+    };
+  });
+
+  // Fixed positions for clean layout
+  const positions = {
+    R1:    {x:0,    y:-150},
+    R2:    {x:300,  y:-150},
+    R3:    {x:-150, y:50},
+    R4:    {x:450,  y:50},
+    Sw5:   {x:-300, y:220},
+    Sw6:   {x:-150, y:220},
+    Sw7:   {x:0,    y:220},
+    Sw8:   {x:300,  y:220},
+    Sw9:   {x:450,  y:220},
+    Sw10:  {x:600,  y:220},
+    VPC11: {x:-300, y:360},
+    VPC12: {x:-150, y:360},
+    VPC13: {x:0,    y:360},
+    VPC14: {x:300,  y:360},
+    VPC15: {x:450,  y:360},
+    VPC16: {x:600,  y:360},
+  };
+  nodes.forEach(n => { if(positions[n.id]) { n.x = positions[n.id].x; n.y = positions[n.id].y; n.physics = false; } });
+
+  const edges = topoData.links.map((l, i) => ({
+    id: i, from: l.from, to: l.to,
+    label: l.label || '',
+    color: { color: l.color || '#555', highlight: '#fff' },
+    width: l.area === 0 ? 3 : (l.area ? 2 : 1),
+    dashes: !l.area,
+    font: { size: 10, color: '#8b949e', align: 'middle', strokeWidth: 0 },
+    smooth: { type: 'curvedCW', roundness: 0.1 }
+  }));
+
+  const container = document.getElementById('network');
+  visNetwork = new vis.Network(container,
+    { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) },
+    {
+      physics: false,
+      interaction: { hover: true, tooltipDelay: 200 },
+      edges: { smooth: false },
+      nodes: { margin: 8 }
+    }
+  );
+
+  visNetwork.on('click', params => {
+    if (params.nodes.length > 0) showDeviceDetail(params.nodes[0]);
+  });
+}
+
+function buildNodeTooltip(n, status) {
+  let html = `<div style="background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:12px;font-size:12px;max-width:250px;color:#c9d1d9">`;
+  html += `<b style="font-size:14px;color:#58a6ff">${n.id}</b>`;
+  if (n.group === 'abr') html += ` <span style="color:#e74c3c;font-size:11px">ABR</span>`;
+  html += `<br><span style="color:#8b949e">${n.title || ''}</span>`;
+  if (status?.status) {
+    html += `<br><span style="color:${status.status==='up'?'#3fb950':'#f85149'}">● ${status.status.toUpperCase()}</span>`;
+  }
+  if (n.interfaces) {
+    html += `<br><br><b style="color:#8b949e">INTERFACES</b>`;
+    n.interfaces.forEach(i => {
+      html += `<br><code style="color:#ffa657">${i.name}</code> ${i.ip}`;
+    });
+  }
+  if (n.subnet) html += `<br>Subnet: <code>${n.subnet}</code>`;
+  if (n.role) html += `<br>Zone: <b>${n.role}</b>`;
+  html += '</div>';
+  return html;
+}
+
+// ── DEVICE DETAIL (sidebar) ────────────────────────────
+function showDeviceDetail(nodeId) {
+  const n = topoData.nodes.find(x => x.id === nodeId);
+  const s = statusData.devices[nodeId];
+  if (!n || !s) return;
+
+  let html = `<div>`;
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">`;
+  html += `<h3 style="color:var(--blue);font-size:15px">${nodeId}</h3>`;
+  html += `<span class="${s.status==='up'?'status-up':'status-down'}">${s.status?.toUpperCase()}</span></div>`;
+
+  if (n.interfaces) {
+    html += `<div class="detail-section"><h4>Interfaces</h4>`;
+    n.interfaces.forEach(i => {
+      const si = s.interfaces?.find(x => x.name.includes(i.name.replace('GigabitEthernet','')));
+      const up = si?.status === 'up' || si?.status === 'connected';
+      html += `<div class="detail-row"><span style="font-family:monospace;font-size:11px">${i.name}</span>
+               <span style="color:${up?'var(--green)':'var(--red)'}">● ${i.ip}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (s.ospf_neighbors?.length) {
+    html += `<div class="detail-section"><h4>OSPF Neighbors</h4>`;
+    s.ospf_neighbors.forEach(nb => {
+      html += `<div class="detail-row"><span>${nb.neighbor_id}</span>
+               <span class="ospf-full">${nb.state}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (s.dhcp_pools?.length) {
+    html += `<div class="detail-section"><h4>DHCP Pools</h4>`;
+    s.dhcp_pools.forEach(p => {
+      const pct = Math.round(p.leased / p.total * 100);
+      const cls = pct > 80 ? 'high' : pct > 50 ? 'medium' : 'low';
+      html += `<div class="dhcp-pool">
+        <div class="dhcp-pool-name"><span>${p.name}</span><span style="color:var(--text2)">${p.leased}/${p.total}</span></div>
+        <div class="progress-bar"><div class="progress-fill ${cls}" style="width:${Math.max(pct,2)}%"></div></div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  if (n.acls?.length) {
+    html += `<div class="detail-section"><h4>ACLs Applied</h4>`;
+    n.acls.forEach(a => html += `<div style="color:var(--orange);padding:2px 0;font-size:11px">🔒 ${a}</div>`);
+    html += `</div>`;
+  }
+
+  if (n.console_port) {
+    html += `<div class="detail-section"><h4>Console</h4>`;
+    html += `<div class="detail-row"><span>Port</span><span style="font-family:monospace">${n.console_port}</span></div>`;
+    html += `<div style="margin-top:4px;font-size:11px;color:var(--text2)">telnet 192.168.1.100 ${n.console_port}</div>`;
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  document.getElementById('device-detail').innerHTML = html;
+  document.getElementById('device-detail').style.textAlign = 'left';
+}
+
+// ── DEVICES TABLE ─────────────────────────────────────
+function renderDevicesTable() {
+  const tbody = document.querySelector('#devices-table tbody');
+  tbody.innerHTML = '';
+  topoData.nodes.filter(n => !n.id.startsWith('VPC')).forEach(n => {
+    const s = statusData.devices[n.id];
+    const grpTag = {
+      abr:'<span class="tag tag-abr">ABR</span>',
+      area10:'<span class="tag tag-area10">Area 10</span>',
+      area20:'<span class="tag tag-area20">Area 20</span>',
+      switch_a10:'<span class="tag tag-sw">L2 Sw</span>',
+      switch_a20:'<span class="tag tag-sw">L2 Sw</span>',
+    }[n.group] || '';
+
+    const ips = n.interfaces?.map(i => i.ip).join('<br>') || n.subnet || '—';
+    const neighbors = s?.ospf_neighbors?.map(nb =>
+      `<span class="ospf-full">${nb.neighbor_id}</span>`).join(', ') || '—';
+    const status = s?.status === 'up'
+      ? '<span class="status-up">● UP</span>'
+      : '<span class="status-down">● DOWN</span>';
+
+    const tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.onclick = () => { showDeviceDetail(n.id); switchToTopology(); };
+    tr.innerHTML = `<td><b>${n.id}</b></td><td>${grpTag}</td><td style="font-family:monospace;font-size:12px">${ips}</td>
+      <td>${status}</td><td>${neighbors}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--text2)">${n.console_port || '—'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function switchToTopology() {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab').classList.add('active');
+  document.getElementById('tab-topology').classList.add('active');
+  setTimeout(() => visNetwork?.fit(), 100);
+}
+
+// ── OSPF TABLE ────────────────────────────────────────
+function renderOspfTable() {
+  const tbody = document.querySelector('#ospf-table tbody');
+  tbody.innerHTML = '';
+  const areaMap = { 'GigabitEthernet0/0': {'R1':'0','R2':'0'}, };
+
+  Object.entries(statusData.devices).forEach(([name, dev]) => {
+    if (!dev.ospf_neighbors) return;
+    dev.ospf_neighbors.forEach(nb => {
+      const area = inferArea(name, nb.interface);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><b>${name}</b></td><td style="font-family:monospace">${nb.neighbor_id}</td>
+        <td><span class="ospf-full">${nb.state}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${nb.interface}</td>
+        <td><span class="area-chip area-${area}">${area === '0' ? 'Backbone' : 'Area '+area}</span></td>`;
+      tbody.appendChild(tr);
+    });
+  });
+
+  // Route cards
+  const rc = document.getElementById('route-cards');
+  rc.innerHTML = '';
+  const routes = [
+    {label:'O  (Intra-Area 10)', routes:['192.168.1.0/24','192.168.2.0/24','192.168.3.0/24'], color:'var(--blue)'},
+    {label:'O IA (Inter-Area 20)', routes:['24.0.0.0/24','192.168.4.0/24','192.168.5.0/24','192.168.6.0/24'], color:'var(--green)'},
+    {label:'C  (Connected)', routes:['12.0.0.0/24','13.0.0.0/24'], color:'var(--orange)'},
+  ];
+  routes.forEach(g => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `<h4 style="color:${g.color}">${g.label}</h4>` +
+      g.routes.map(r => `<div style="font-family:monospace;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)">${r}</div>`).join('');
+    rc.appendChild(div);
+  });
+}
+
+function inferArea(router, iface) {
+  if (!iface) return '?';
+  if (router === 'R1' && iface.includes('0/0')) return '0';
+  if (router === 'R1' && iface.includes('0/1')) return '10';
+  if (router === 'R2' && iface.includes('0/0')) return '0';
+  if (router === 'R2' && iface.includes('0/1')) return '20';
+  if (router === 'R3') return '10';
+  if (router === 'R4') return '20';
+  return '?';
+}
+
+// ── ACL TAB ───────────────────────────────────────────
+function renderAclTab() {
+  // Traffic matrix
+  const sources = ['IT/Admin\n192.168.1.x','HR\n192.168.2.x','Guest\n192.168.3.x'];
+  const dests   = ['Finance\n192.168.4.x','Servers\n192.168.5.x','MGMT\n192.168.6.x','IT/Admin\n192.168.1.x','Other'];
+  const matrix  = [
+    ['allow','allow','allow','—','allow'],
+    ['allow','allow','deny', '—','allow'],
+    ['allow','allow','deny', 'deny','allow'],
+  ];
+
+  let tbl = '<thead><tr><th>Source \\ Dest</th>';
+  dests.forEach(d => tbl += `<th>${d.replace('\n','<br>')}</th>`);
+  tbl += '</tr></thead><tbody>';
+  sources.forEach((s, i) => {
+    tbl += `<tr><td style="font-weight:600;text-align:left">${s.replace('\n','<br>')}</td>`;
+    matrix[i].forEach(cell => {
+      const cls = cell === 'allow' ? 'acl-cell-allow' : cell === 'deny' ? 'acl-cell-deny' : 'acl-cell-na';
+      tbl += `<td class="${cls}">${cell === 'allow' ? '✓ ALLOW' : cell === 'deny' ? '✗ DENY' : '—'}</td>`;
+    });
+    tbl += '</tr>';
+  });
+  tbl += '</tbody>';
+  document.getElementById('acl-matrix').innerHTML = tbl;
+
+  // ACL cards
+  const cards = document.getElementById('acl-cards');
+  cards.innerHTML = '';
+  topoData.acl_policy.forEach(acl => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    const typeColor = acl.type === 'Extended' ? 'var(--orange)' : 'var(--purple)';
+    div.innerHTML = `<h4><span style="color:${typeColor}">${acl.id}</span>
+      <span style="font-size:11px;color:var(--text2);font-weight:normal;margin-left:8px">${acl.type} • Applied: ${acl.applied}</span></h4>`;
+    acl.rules.forEach(r => {
+      const isPermit = r.action === 'permit';
+      div.innerHTML += `<div class="rule-row">
+        <span class="tag ${isPermit?'tag-permit':'tag-deny'}">${isPermit?'PERMIT':'DENY'}</span>
+        <span style="font-family:monospace;font-size:11px;color:var(--text2)">${r.src}</span>
+        <span class="arrow">→</span>
+        <span style="font-family:monospace;font-size:11px;color:var(--text2)">${r.dst}</span>
+        <span style="flex:1;text-align:right;color:${isPermit?'var(--green)':'var(--red)'};font-size:11px">${r.desc}</span>
+      </div>`;
+    });
+    cards.appendChild(div);
+  });
+}
+
+// ── DHCP TAB ─────────────────────────────────────────
+function renderDhcpTab() {
+  const container = document.getElementById('dhcp-content');
+  container.innerHTML = '';
+  ['R3','R4'].forEach(router => {
+    const dev = statusData.devices[router];
+    if (!dev?.dhcp_pools) return;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<h4 style="color:${router==='R3'?'var(--blue)':'var(--green)'}">
+      ${router} — ${router==='R3'?'Area 10':'Area 20'}</h4>`;
+    dev.dhcp_pools.forEach(p => {
+      const pct = Math.round(p.leased / p.total * 100);
+      const cls = pct > 80 ? 'high' : pct > 50 ? 'medium' : 'low';
+      card.innerHTML += `<div class="dhcp-pool">
+        <div class="dhcp-pool-name">
+          <span><b>${p.name}</b> <span style="color:var(--text2);font-size:11px">${p.network}</span></span>
+          <span style="color:var(--text2)">${p.leased} / ${p.total} leased</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill ${cls}" style="width:${Math.max(pct,1)}%"></div></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px">${pct}% utilized</div>
+      </div>`;
+    });
+    container.appendChild(card);
+  });
+}
+
+// ── AUTO REFRESH ──────────────────────────────────────
+loadData();
+setInterval(loadData, 60000); // refresh every 60s
+</script>
+</body>
+</html>

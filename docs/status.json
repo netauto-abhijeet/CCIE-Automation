@@ -1,0 +1,74 @@
+{
+  "_meta": {
+    "last_updated": "2026-03-19T12:00:00Z",
+    "collector": "monitor.py",
+    "interval_minutes": 5,
+    "note": "Status auto-updated by monitor.py running on Ubuntu VM"
+  },
+  "devices": {
+    "R1": {
+      "status": "up",
+      "ospf_neighbors": [
+        {"neighbor_id": "2.2.2.2", "state": "FULL", "interface": "GigabitEthernet0/0"},
+        {"neighbor_id": "192.168.3.1", "state": "FULL", "interface": "GigabitEthernet0/1"}
+      ],
+      "interfaces": [
+        {"name": "GigabitEthernet0/0", "ip": "12.0.0.1", "status": "up", "protocol": "up"},
+        {"name": "GigabitEthernet0/1", "ip": "13.0.0.1", "status": "up", "protocol": "up"}
+      ],
+      "ospf_routes": 7
+    },
+    "R2": {
+      "status": "up",
+      "ospf_neighbors": [
+        {"neighbor_id": "1.1.1.1", "state": "FULL", "interface": "GigabitEthernet0/0"},
+        {"neighbor_id": "4.4.4.4", "state": "FULL", "interface": "GigabitEthernet0/1"}
+      ],
+      "interfaces": [
+        {"name": "GigabitEthernet0/0", "ip": "12.0.0.2", "status": "up", "protocol": "up"},
+        {"name": "GigabitEthernet0/1", "ip": "24.0.0.2", "status": "up", "protocol": "up"}
+      ],
+      "ospf_routes": 6
+    },
+    "R3": {
+      "status": "up",
+      "ospf_neighbors": [
+        {"neighbor_id": "1.1.1.1", "state": "FULL", "interface": "GigabitEthernet0/0"}
+      ],
+      "interfaces": [
+        {"name": "GigabitEthernet0/0", "ip": "13.0.0.3", "status": "up", "protocol": "up"},
+        {"name": "GigabitEthernet0/1", "ip": "192.168.1.1", "status": "up", "protocol": "up"},
+        {"name": "GigabitEthernet0/2", "ip": "192.168.2.1", "status": "up", "protocol": "up"},
+        {"name": "GigabitEthernet0/3", "ip": "192.168.3.1", "status": "up", "protocol": "up"}
+      ],
+      "dhcp_pools": [
+        {"name": "IT_ADMIN", "network": "192.168.1.0/24", "leased": 1, "total": 253},
+        {"name": "HR",       "network": "192.168.2.0/24", "leased": 0, "total": 253},
+        {"name": "GUEST",    "network": "192.168.3.0/24", "leased": 0, "total": 253}
+      ]
+    },
+    "R4": {
+      "status": "up",
+      "ospf_neighbors": [
+        {"neighbor_id": "2.2.2.2", "state": "FULL", "interface": "GigabitEthernet0/0"}
+      ],
+      "interfaces": [
+        {"name": "GigabitEthernet0/0", "ip": "24.0.0.4", "status": "up", "protocol": "up"},
+        {"name": "GigabitEthernet0/1", "ip": "192.168.4.1", "status": "up", "protocol": "up"},
+        {"name": "GigabitEthernet0/2", "ip": "192.168.5.1", "status": "up", "protocol": "up"},
+        {"name": "GigabitEthernet0/3", "ip": "192.168.6.1", "status": "up", "protocol": "up"}
+      ],
+      "dhcp_pools": [
+        {"name": "FINANCE", "network": "192.168.4.0/24", "leased": 0, "total": 253},
+        {"name": "SERVERS", "network": "192.168.5.0/24", "leased": 0, "total": 253},
+        {"name": "MGMT",    "network": "192.168.6.0/24", "leased": 0, "total": 253}
+      ]
+    },
+    "Sw5":  {"status": "up", "interfaces": [{"name": "Gi0/0", "status": "connected"}, {"name": "Gi0/1", "status": "connected"}]},
+    "Sw6":  {"status": "up", "interfaces": [{"name": "Gi0/0", "status": "connected"}, {"name": "Gi0/1", "status": "connected"}]},
+    "Sw7":  {"status": "up", "interfaces": [{"name": "Gi0/0", "status": "connected"}, {"name": "Gi0/1", "status": "connected"}]},
+    "Sw8":  {"status": "up", "interfaces": [{"name": "Gi0/0", "status": "connected"}, {"name": "Gi0/1", "status": "connected"}]},
+    "Sw9":  {"status": "up", "interfaces": [{"name": "Gi0/0", "status": "connected"}, {"name": "Gi0/1", "status": "connected"}]},
+    "Sw10": {"status": "up", "interfaces": [{"name": "Gi0/0", "status": "connected"}, {"name": "Gi0/1", "status": "connected"}]}
+  }
+}

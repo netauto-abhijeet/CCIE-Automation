@@ -1,0 +1,107 @@
+{
+  "lab": {
+    "name": "Lab01 - OSPF Multi-Area + ACL",
+    "description": "Branch Office Security Policy — OSPF Process 10, 3 Areas, 6 Access Networks",
+    "github": "https://github.com/netauto-abhijeet/CCIE-Automation",
+    "eve_ng": "192.168.1.100"
+  },
+  "nodes": [
+    {
+      "id": "R1", "label": "R1\nABR", "group": "abr",
+      "title": "R1 — Area Border Router (Area 0 + Area 10)",
+      "interfaces": [
+        {"name": "Gi0/0", "ip": "12.0.0.1/24", "desc": "Area0 → R2"},
+        {"name": "Gi0/1", "ip": "13.0.0.1/24", "desc": "Area10 → R3"}
+      ],
+      "ospf": {"process": 10, "router_id": "1.1.1.1", "areas": ["0","10"]},
+      "console_port": 38727
+    },
+    {
+      "id": "R2", "label": "R2\nABR", "group": "abr",
+      "title": "R2 — Area Border Router (Area 0 + Area 20)",
+      "interfaces": [
+        {"name": "Gi0/0", "ip": "12.0.0.2/24", "desc": "Area0 → R1"},
+        {"name": "Gi0/1", "ip": "24.0.0.2/24", "desc": "Area20 → R4"}
+      ],
+      "ospf": {"process": 10, "router_id": "2.2.2.2", "areas": ["0","20"]},
+      "console_port": 54203
+    },
+    {
+      "id": "R3", "label": "R3\nArea 10", "group": "area10",
+      "title": "R3 — Internal Router Area 10 + DHCP Server",
+      "interfaces": [
+        {"name": "Gi0/0", "ip": "13.0.0.3/24", "desc": "Area10 ↔ R1"},
+        {"name": "Gi0/1", "ip": "192.168.1.1/24", "desc": "IT/Admin → Sw5"},
+        {"name": "Gi0/2", "ip": "192.168.2.1/24", "desc": "HR → Sw6 [ACL120 in]"},
+        {"name": "Gi0/3", "ip": "192.168.3.1/24", "desc": "Guest → Sw7 [ACL110 in]"}
+      ],
+      "ospf": {"process": 10, "areas": ["10"]},
+      "dhcp_pools": ["IT_ADMIN","HR","GUEST"],
+      "acls": ["110 (Gi0/3 in)","120 (Gi0/2 in)"],
+      "console_port": 41967
+    },
+    {
+      "id": "R4", "label": "R4\nArea 20", "group": "area20",
+      "title": "R4 — Internal Router Area 20 + DHCP Server",
+      "interfaces": [
+        {"name": "Gi0/0", "ip": "24.0.0.4/24", "desc": "Area20 ↔ R2"},
+        {"name": "Gi0/1", "ip": "192.168.4.1/24", "desc": "Finance → Sw8 [ACL20 in]"},
+        {"name": "Gi0/2", "ip": "192.168.5.1/24", "desc": "Servers → Sw9"},
+        {"name": "Gi0/3", "ip": "192.168.6.1/24", "desc": "MGMT → Sw10 [ACL10 in]"}
+      ],
+      "ospf": {"process": 10, "areas": ["20"]},
+      "dhcp_pools": ["FINANCE","SERVERS","MGMT"],
+      "acls": ["10 (Gi0/3 in)","20 (Gi0/1 in)"],
+      "console_port": 33599
+    },
+    {"id": "Sw5",  "label": "Sw5\n[IT]",      "group": "switch_a10", "subnet": "192.168.1.0/24", "role": "IT/Admin",  "vpc": "VPC11", "console_port": 46457},
+    {"id": "Sw6",  "label": "Sw6\n[HR]",       "group": "switch_a10", "subnet": "192.168.2.0/24", "role": "HR",        "vpc": "VPC12", "console_port": 57373},
+    {"id": "Sw7",  "label": "Sw7\n[Guest]",    "group": "switch_a10", "subnet": "192.168.3.0/24", "role": "Guest",     "vpc": "VPC13", "console_port": 48741},
+    {"id": "Sw8",  "label": "Sw8\n[Finance]",  "group": "switch_a20", "subnet": "192.168.4.0/24", "role": "Finance",   "vpc": "VPC14", "console_port": 48381},
+    {"id": "Sw9",  "label": "Sw9\n[Servers]",  "group": "switch_a20", "subnet": "192.168.5.0/24", "role": "Servers",   "vpc": "VPC15", "console_port": 34575},
+    {"id": "Sw10", "label": "Sw10\n[MGMT]",    "group": "switch_a20", "subnet": "192.168.6.0/24", "role": "MGMT",      "vpc": "VPC16", "console_port": 49197},
+    {"id": "VPC11", "label": "VPC11", "group": "vpc", "subnet": "192.168.1.0/24"},
+    {"id": "VPC12", "label": "VPC12", "group": "vpc", "subnet": "192.168.2.0/24"},
+    {"id": "VPC13", "label": "VPC13", "group": "vpc", "subnet": "192.168.3.0/24"},
+    {"id": "VPC14", "label": "VPC14", "group": "vpc", "subnet": "192.168.4.0/24"},
+    {"id": "VPC15", "label": "VPC15", "group": "vpc", "subnet": "192.168.5.0/24"},
+    {"id": "VPC16", "label": "VPC16", "group": "vpc", "subnet": "192.168.6.0/24"}
+  ],
+  "links": [
+    {"from": "R1", "to": "R2", "label": "12.0.0.0/24\nArea 0", "area": 0, "color": "#e74c3c"},
+    {"from": "R1", "to": "R3", "label": "13.0.0.0/24\nArea 10", "area": 10, "color": "#3498db"},
+    {"from": "R2", "to": "R4", "label": "24.0.0.0/24\nArea 20", "area": 20, "color": "#2ecc71"},
+    {"from": "R3", "to": "Sw5",  "label": "192.168.1.0/24", "area": 10, "color": "#3498db"},
+    {"from": "R3", "to": "Sw6",  "label": "192.168.2.0/24", "area": 10, "color": "#3498db"},
+    {"from": "R3", "to": "Sw7",  "label": "192.168.3.0/24", "area": 10, "color": "#3498db"},
+    {"from": "R4", "to": "Sw8",  "label": "192.168.4.0/24", "area": 20, "color": "#2ecc71"},
+    {"from": "R4", "to": "Sw9",  "label": "192.168.5.0/24", "area": 20, "color": "#2ecc71"},
+    {"from": "R4", "to": "Sw10", "label": "192.168.6.0/24", "area": 20, "color": "#2ecc71"},
+    {"from": "Sw5",  "to": "VPC11", "color": "#95a5a6"},
+    {"from": "Sw6",  "to": "VPC12", "color": "#95a5a6"},
+    {"from": "Sw7",  "to": "VPC13", "color": "#95a5a6"},
+    {"from": "Sw8",  "to": "VPC14", "color": "#95a5a6"},
+    {"from": "Sw9",  "to": "VPC15", "color": "#95a5a6"},
+    {"from": "Sw10", "to": "VPC16", "color": "#95a5a6"}
+  ],
+  "acl_policy": [
+    {"id": "ACL 110", "type": "Extended", "applied": "R3 Gi0/3 in", "zone": "Guest", "rules": [
+      {"action": "deny",   "src": "192.168.3.0/24", "dst": "192.168.1.0/24", "desc": "Guest → IT/Admin BLOCKED"},
+      {"action": "permit", "src": "any",             "dst": "any",            "desc": "All other traffic allowed"}
+    ]},
+    {"id": "ACL 120", "type": "Extended", "applied": "R3 Gi0/2 in", "zone": "HR", "rules": [
+      {"action": "deny",   "src": "192.168.2.0/24", "dst": "192.168.4.0/24", "desc": "HR → Finance BLOCKED"},
+      {"action": "deny",   "src": "192.168.2.0/24", "dst": "192.168.6.0/24", "desc": "HR → MGMT BLOCKED"},
+      {"action": "permit", "src": "any",             "dst": "any",            "desc": "All other traffic allowed"}
+    ]},
+    {"id": "ACL 10", "type": "Standard", "applied": "R4 Gi0/3 in", "zone": "MGMT", "rules": [
+      {"action": "permit", "src": "192.168.1.0/24", "dst": "—", "desc": "IT/Admin → MGMT ALLOWED"},
+      {"action": "deny",   "src": "any",            "dst": "—", "desc": "Everyone else BLOCKED"}
+    ]},
+    {"id": "ACL 20", "type": "Standard", "applied": "R4 Gi0/1 in", "zone": "Finance", "rules": [
+      {"action": "permit", "src": "192.168.1.0/24", "dst": "—", "desc": "IT/Admin → Finance ALLOWED"},
+      {"action": "permit", "src": "192.168.2.0/24", "dst": "—", "desc": "HR → Finance ALLOWED"},
+      {"action": "deny",   "src": "any",            "dst": "—", "desc": "Everyone else BLOCKED"}
+    ]}
+  ]
+}
