@@ -366,12 +366,12 @@ function renderStats() {
 // ── TOPOLOGY ──────────────────────────────────────────
 function renderTopology() {
   const nodeGroups = {
-    abr:        { shape:'box',    color:{background:'#7d1f1f',border:'#e74c3c'}, font:{color:'#fff',size:13,bold:true}, size:28 },
-    area10:     { shape:'box',    color:{background:'#1a3a5c',border:'#3498db'}, font:{color:'#fff',size:13,bold:true}, size:28 },
-    area20:     { shape:'box',    color:{background:'#1a4a2e',border:'#2ecc71'}, font:{color:'#fff',size:13,bold:true}, size:28 },
-    switch_a10: { shape:'diamond',color:{background:'#2d1b4e',border:'#9b59b6'}, font:{color:'#c9d1d9',size:11}, size:18 },
-    switch_a20: { shape:'diamond',color:{background:'#2d1b4e',border:'#9b59b6'}, font:{color:'#c9d1d9',size:11}, size:18 },
-    vpc:        { shape:'dot',    color:{background:'#162032',border:'#4fc3f7'}, font:{color:'#7eccea',size:10}, size:12 },
+    abr:        { shape:'box',    color:{background:'#7d1f1f',border:'#e74c3c'}, font:{color:'#ffffff',size:14,bold:true}, size:30 },
+    area10:     { shape:'box',    color:{background:'#1a3a5c',border:'#3498db'}, font:{color:'#ffffff',size:14,bold:true}, size:30 },
+    area20:     { shape:'box',    color:{background:'#1a4a2e',border:'#2ecc71'}, font:{color:'#ffffff',size:14,bold:true}, size:30 },
+    switch_a10: { shape:'diamond',color:{background:'#2d1b4e',border:'#9b59b6'}, font:{color:'#f0f0f0',size:13,bold:true}, size:22 },
+    switch_a20: { shape:'diamond',color:{background:'#2d1b4e',border:'#9b59b6'}, font:{color:'#f0f0f0',size:13,bold:true}, size:22 },
+    vpc:        { shape:'dot',    color:{background:'#162032',border:'#4fc3f7'}, font:{color:'#a8d8ea',size:12}, size:14 },
   };
 
   const nodes = topoData.nodes.map(n => {
@@ -418,7 +418,7 @@ function renderTopology() {
     color: { color: l.color || '#555', highlight: '#fff' },
     width: l.area === 0 ? 3 : (l.area ? 2 : 1),
     dashes: !l.area,
-    font: { size: 10, color: '#8b949e', align: 'middle', strokeWidth: 0 },
+    font: { size: 11, color: '#d0d7de', align: 'middle', strokeWidth: 3, strokeColor: '#0d1117' },
     smooth: { type: 'curvedCW', roundness: 0.1 }
   }));
 
