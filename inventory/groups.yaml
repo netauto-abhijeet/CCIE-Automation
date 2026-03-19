@@ -1,0 +1,10 @@
+# groups.yaml - Device group defaults
+cisco_ios:
+  platform: ios
+  username: cisco
+  password: cisco
+
+cisco_xe:
+  platform: iosxe
+  username: admin
+  password: admin
