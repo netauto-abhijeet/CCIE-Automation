@@ -26,9 +26,18 @@ DEVICES = {
     "Sw10":{"port": 49197, "type": "switch"},
 }
 
+VPC_CONSOLES = {
+    "VPC11": 37221,
+    "VPC12": 56697,
+    "VPC13": 46723,
+    "VPC14": 56295,
+    "VPC15": 33043,
+    "VPC16": 60193,
+}
+
 # ── TELNET HELPERS ─────────────────────────────────────
 
-def connect(port, sock_timeout=5):
+def connect(port, sock_timeout=2):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(sock_timeout)
     s.connect((EVENG_IP, port))
@@ -43,7 +52,9 @@ def connect(port, sock_timeout=5):
     return s
 
 def read_prompt(s, expect='#', max_wait=8):
-    """Read until expect char found or timeout."""
+    """Read until expect char found or deadline exceeded.
+    NOTE: socket.timeout between chunks does NOT abort — we keep waiting
+    until the full deadline, so multi-pool 'show ip dhcp pool' works."""
     buf = b''
     deadline = time.time() + max_wait
     while time.time() < deadline:
@@ -52,12 +63,21 @@ def read_prompt(s, expect='#', max_wait=8):
             if expect.encode() in buf:
                 break
         except socket.timeout:
-            break
+            # IOS pauses between chunks (e.g. between DHCP pools).
+            # Only stop if we already have the prompt OR deadline passed.
+            if expect.encode() in buf:
+                break
+            # else: keep looping until deadline
     return buf.decode('ascii', errors='ignore')
 
 def cmd(s, command, wait=6):
     s.send(command.encode() + b'\r\n')
-    return read_prompt(s, '#', wait)
+    result = read_prompt(s, '#', wait)
+    # Drain leftover prompt chars (double R3# etc.) so next cmd reads clean
+    time.sleep(0.15)
+    try: s.recv(4096)
+    except: pass
+    return result
 
 def login(s, pw=None):
     """Wake up and get to priv exec."""
@@ -97,12 +117,25 @@ def parse_neighbors(txt):
             nbrs.append({"neighbor_id": m.group(1), "state": m.group(2), "interface": m.group(3)})
     return nbrs
 
+# Known pool → subnet mapping (used to enrich status.json)
+POOL_NETWORKS = {
+    "IT_ADMIN": "192.168.1.0/24",
+    "HR":       "192.168.2.0/24",
+    "GUEST":    "192.168.3.0/24",
+    "FINANCE":  "192.168.4.0/24",
+    "OPS":      "192.168.5.0/24",
+    "SERVERS":  "192.168.6.0/24",
+}
+
 def parse_dhcp(txt):
     pools, cur = [], None
     for line in txt.splitlines():
-        if re.match(r'Pool \S+ :', line):
+        m = re.match(r'Pool (\S+) :', line)
+        if m:
             if cur: pools.append(cur)
-            cur = {"name": re.match(r'Pool (\S+) :', line).group(1), "leased":0, "total":0}
+            name = m.group(1)
+            cur = {"name": name, "leased": 0, "total": 254,
+                   "network": POOL_NETWORKS.get(name, "—")}
         if cur:
             lm = re.match(r'\s*Leased addresses\s*:\s*(\d+)', line)
             if lm: cur["leased"] = int(lm.group(1))
@@ -130,7 +163,7 @@ def poll_router(name, port, pw=None):
         nbrs     = parse_neighbors(cmd(s, 'show ip ospf neighbor', 6))
         routes   = len([l for l in cmd(s, 'show ip route ospf', 8).splitlines()
                         if re.match(r'\s*O[\s\*]', l)])
-        pools    = parse_dhcp(cmd(s, 'show ip dhcp pool', 8))
+        pools    = parse_dhcp(cmd(s, 'show ip dhcp pool', 20))  # 3 pools × ~2s gap
         s.close()
         
         result = {"status": "up", "interfaces": ifaces,
@@ -156,6 +189,50 @@ def poll_switch(name, port):
         return name, {"status": "down", "error": str(e)}
 
 
+def poll_vpc(name, port):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(3)
+        s.connect((EVENG_IP, port))
+        time.sleep(0.3)
+        try: s.recv(4096)
+        except: pass
+        s.send(b'\n')
+        buf = b''
+        deadline = time.time() + 3
+        while time.time() < deadline:
+            try:
+                buf += s.recv(4096)
+                if b'VPCS>' in buf: break
+            except socket.timeout:
+                if b'VPCS>' in buf: break
+        s.send(b'show ip\n')
+        buf = b''
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            try:
+                buf += s.recv(4096)
+                if b'VPCS>' in buf: break
+            except socket.timeout:
+                if b'VPCS>' in buf: break
+        s.close()
+        out = buf.decode('ascii', errors='ignore')
+        ip, gw, mac = None, None, None
+        for line in out.splitlines():
+            m = re.match(r'\s*IP/MASK\s*:\s*(\S+)', line)
+            if m and not m.group(1).startswith('0.'): ip = m.group(1)
+            m = re.match(r'\s*GATEWAY\s*:\s*(\S+)', line)
+            if m and not m.group(1).startswith('0.'): gw = m.group(1)
+            m = re.match(r'\s*MAC\s*:\s*(\S+)', line)
+            if m: mac = m.group(1)
+        status = "up" if ip else "no_ip"
+        print(f"  ✅ {name}: {ip or 'no IP'}")
+        return name, {"status": status, "ip": ip, "gateway": gw, "mac": mac}
+    except Exception as e:
+        print(f"  ❌ {name}: {e}")
+        return name, {"status": "down", "error": str(e)}
+
+
 # ── MAIN ───────────────────────────────────────────────
 
 def main():
@@ -167,13 +244,16 @@ def main():
     futures = {}
     
     # Submit all polls in parallel
-    with ThreadPoolExecutor(max_workers=10) as ex:
+    with ThreadPoolExecutor(max_workers=16) as ex:
         for name, d in DEVICES.items():
             if d["type"] == "router":
                 f = ex.submit(poll_router, name, d["port"], d.get("enable_pw"))
             else:
                 f = ex.submit(poll_switch, name, d["port"])
             futures[f] = name
+        for vpc_name, vpc_port in VPC_CONSOLES.items():
+            f = ex.submit(poll_vpc, vpc_name, vpc_port)
+            futures[f] = vpc_name
         
         # Collect results with per-task 50s timeout
         done, pending = wait(list(futures.keys()), timeout=50)
@@ -221,7 +301,7 @@ def main():
     
     up = sum(1 for d in devices_status.values() if d.get('status')=='up')
     print(f"  {'='*45}")
-    print(f"  Result: {up}/{len(DEVICES)} devices UP | {datetime.now().strftime('%H:%M:%S')}")
+    print(f"  Result: {up}/{len(DEVICES)+len(VPC_CONSOLES)} nodes UP | {datetime.now().strftime('%H:%M:%S')}")
     print(f"{'='*55}\n")
 
 if __name__ == "__main__":

@@ -198,9 +198,9 @@
     <div class="tab-content" id="tab-devices">
       <div class="panel-scroll">
         <p class="section-title">Device Inventory</p>
-        <p class="section-sub">All 10 nodes in EVE-NG lab • Click a row to inspect</p>
+        <p class="section-sub">4 Routers • 6 L2 Switches • 6 VPC End Hosts • Click a row to inspect</p>
         <table id="devices-table">
-          <thead><tr><th>Device</th><th>Role</th><th>IP(s)</th><th>Status</th><th>OSPF Neighbors</th><th>Console Port</th></tr></thead>
+          <thead><tr><th>Device</th><th>Role</th><th>IP / Subnet</th><th>Status</th><th>OSPF / Gateway</th><th>Console Port</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -209,14 +209,15 @@
     <!-- OSPF TAB -->
     <div class="tab-content" id="tab-ospf">
       <div class="panel-scroll">
-        <p class="section-title">OSPF Process 10 — Neighbor Table</p>
-        <p class="section-sub">Multi-area OSPF • Area 0 backbone • Areas 10 and 20</p>
+        <p class="section-title">OSPF Process 10 — Neighbor Adjacencies</p>
+        <p class="section-sub">3-area design • Area 0 Backbone (R1↔R2) • Area 10 Branch-A (R1↔R3) • Area 20 Branch-B (R2↔R4)</p>
         <table id="ospf-table">
           <thead><tr><th>Router</th><th>Neighbor ID</th><th>State</th><th>Interface</th><th>Area</th></tr></thead>
           <tbody></tbody>
         </table>
         <div style="margin-top:20px">
-          <p class="section-title" style="font-size:14px">Route Summary from R1</p>
+          <p class="section-title" style="font-size:14px">Route Summary (R1 Perspective)</p>
+          <p style="font-size:11px;color:var(--text2);margin:4px 0 10px">R1 is ABR for Area 0+10. Area 10 = Intra-area (O). Area 20 = Inter-area (O IA via R2). Both areas fully reachable.</p>
           <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="route-cards"></div>
         </div>
       </div>
@@ -288,7 +289,9 @@
       <div style="font-size:12px;line-height:1.7">
         <div class="detail-row"><span>Platform</span><span>EVE-NG PRO</span></div>
         <div class="detail-row"><span>Image</span><span>vIOS 15.6</span></div>
-        <div class="detail-row"><span>OSPF Process</span><span>10</span></div>
+        <div class="detail-row"><span>OSPF Process</span><span>10 — 3 Areas</span></div>
+        <div class="detail-row"><span>Areas</span><span>0 • 10 • 20</span></div>
+        <div class="detail-row"><span>ABRs</span><span>R1 (0+10) R2 (0+20)</span></div>
         <div class="detail-row"><span>Routers</span><span>R1, R2, R3, R4</span></div>
         <div class="detail-row"><span>Switches</span><span>Sw5–Sw10 (L2)</span></div>
         <div class="detail-row"><span>End Hosts</span><span>VPC11–VPC16</span></div>
@@ -352,7 +355,7 @@ function updateTimestamp() {
 // ── STATS ─────────────────────────────────────────────
 function renderStats() {
   const devs = statusData.devices;
-  const up = Object.values(devs).filter(d => d.status === 'up').length;
+  const up = Object.values(devs).filter(d => d.status === 'up' || d.status === 'no_ip').length;
   const neighbors = Object.values(devs)
     .filter(d => d.ospf_neighbors)
     .reduce((sum, d) => sum + d.ospf_neighbors.length, 0);
@@ -457,7 +460,21 @@ function buildNodeTooltip(n, status) {
     });
     inner += `</div>`;
   }
-  if (n.subnet) inner += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #30363d;font-size:11px">Subnet: <code style="color:#ffa657">${n.subnet}</code></div>`;
+  if (n.group === 'vpc') {
+    const vs = statusData.devices[n.id];
+    const vip = vs?.ip || 'No IP (run ip dhcp)';
+    const vgw = vs?.gateway || '—';
+    const vmac = vs?.mac || '—';
+    inner += `<div style="margin-top:7px;padding-top:7px;border-top:1px solid #30363d">`;
+    inner += `<div style="color:#8b949e;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">End Host — DHCP Client</div>`;
+    inner += `<div style="font-family:monospace;font-size:12px"><span style="color:#8b949e">IP  </span><span style="color:#3fb950">${vip}</span></div>`;
+    inner += `<div style="font-family:monospace;font-size:12px"><span style="color:#8b949e">GW  </span><span style="color:#ffa657">${vgw}</span></div>`;
+    inner += `<div style="font-family:monospace;font-size:12px"><span style="color:#8b949e">Net </span><span style="color:#c9d1d9">${n.subnet || '—'}</span></div>`;
+    if (vmac !== '—') inner += `<div style="font-family:monospace;font-size:11px;color:#8b949e">MAC ${vmac}</div>`;
+    inner += `</div>`;
+  } else if (n.subnet) {
+    inner += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #30363d;font-size:11px">Subnet: <code style="color:#ffa657">${n.subnet}</code></div>`;
+  }
   if (n.role)   inner += `<div style="font-size:11px">Zone: <b style="color:#58a6ff">${n.role}</b></div>`;
   if (n.acls?.length) {
     inner += `<div style="margin-top:6px;padding-top:6px;border-top:1px solid #30363d">` + n.acls.map(a => `<div style="color:#f0883e;font-size:11px">🔒 ${a}</div>`).join('') + `</div>`;
@@ -470,7 +487,34 @@ function buildNodeTooltip(n, status) {
 function showDeviceDetail(nodeId) {
   const n = topoData.nodes.find(x => x.id === nodeId);
   const s = statusData.devices[nodeId];
-  if (!n || !s) return;
+  if (!n) return;
+  if (!s) { document.getElementById('device-detail').innerHTML = `<div style="color:var(--text2);text-align:center;padding:20px">${nodeId}<br><small>Not monitored</small></div>`; return; }
+
+  // Handle VPC end hosts
+  if (n.group === 'vpc') {
+    let html = `<div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="color:#4fc3f7;font-size:15px">${nodeId}</h3>
+        <span class="${s.status==='up'?'status-up':s.status==='no_ip'?'':'status-down'}" style="${s.status==='no_ip'?'color:var(--yellow)':''}">${(s.status||'unknown').toUpperCase()}</span>
+      </div>
+      <div class="detail-section"><h4>Network Assignment</h4>
+        <div class="detail-row"><span>Subnet</span><span style="font-family:monospace">${n.subnet||'—'}</span></div>
+        <div class="detail-row"><span>Zone</span><span style="color:var(--blue)">${n.role||'—'}</span></div>
+        <div class="detail-row"><span>Connected Switch</span><span>${n.vpc ? n.vpc.replace('VPC','Sw') : '—'}</span></div>
+      </div>
+      <div class="detail-section"><h4>DHCP Assignment</h4>
+        <div class="detail-row"><span>IP Address</span><span style="font-family:monospace;color:var(--green)">${s.ip||'Not assigned'}</span></div>
+        <div class="detail-row"><span>Default Gateway</span><span style="font-family:monospace;color:var(--orange)">${s.gateway||'—'}</span></div>
+        <div class="detail-row"><span>MAC Address</span><span style="font-family:monospace;font-size:11px">${s.mac||'—'}</span></div>
+      </div>
+      <div class="detail-section"><h4>EVE-NG Console</h4>
+        <div style="font-size:11px;color:var(--text2)">Type: VPCS Simulator<br>Run <code style="color:var(--blue)">ip dhcp</code> to acquire address</div>
+      </div>
+    </div>`;
+    document.getElementById('device-detail').innerHTML = html;
+    document.getElementById('device-detail').style.textAlign = 'left';
+    return;
+  }
 
   let html = `<div>`;
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">`;
@@ -532,6 +576,8 @@ function showDeviceDetail(nodeId) {
 function renderDevicesTable() {
   const tbody = document.querySelector('#devices-table tbody');
   tbody.innerHTML = '';
+
+  // Network devices (routers + switches)
   topoData.nodes.filter(n => !n.id.startsWith('VPC')).forEach(n => {
     const s = statusData.devices[n.id];
     const grpTag = {
@@ -541,20 +587,48 @@ function renderDevicesTable() {
       switch_a10:'<span class="tag tag-sw">L2 Sw</span>',
       switch_a20:'<span class="tag tag-sw">L2 Sw</span>',
     }[n.group] || '';
-
     const ips = n.interfaces?.map(i => i.ip).join('<br>') || n.subnet || '—';
     const neighbors = s?.ospf_neighbors?.map(nb =>
       `<span class="ospf-full">${nb.neighbor_id}</span>`).join(', ') || '—';
-    const status = s?.status === 'up'
+    const statusStr = s?.status === 'up'
       ? '<span class="status-up">● UP</span>'
       : '<span class="status-down">● DOWN</span>';
-
     const tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
     tr.onclick = () => { showDeviceDetail(n.id); switchToTopology(); };
-    tr.innerHTML = `<td><b>${n.id}</b></td><td>${grpTag}</td><td style="font-family:monospace;font-size:12px">${ips}</td>
-      <td>${status}</td><td>${neighbors}</td>
+    tr.innerHTML = `<td><b>${n.id}</b></td><td>${grpTag}</td>
+      <td style="font-family:monospace;font-size:12px">${ips}</td>
+      <td>${statusStr}</td><td>${neighbors}</td>
       <td style="font-family:monospace;font-size:12px;color:var(--text2)">${n.console_port || '—'}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Divider row
+  const div = document.createElement('tr');
+  div.innerHTML = `<td colspan="6" style="background:var(--bg3);color:var(--text2);font-size:11px;
+    letter-spacing:1px;text-transform:uppercase;padding:6px 12px">VPC End Hosts (VPCS — DHCP clients)</td>`;
+  tbody.appendChild(div);
+
+  // VPC end hosts
+  topoData.nodes.filter(n => n.id.startsWith('VPC')).forEach(n => {
+    const s = statusData.devices[n.id];
+    const ip = s?.ip || '—';
+    const gw  = s?.gateway ? `GW: <span style="color:var(--orange)">${s.gateway}</span>` : '—';
+    const statusStr = s?.status === 'up'
+      ? `<span class="status-up">● UP</span>`
+      : s?.status === 'no_ip'
+      ? `<span style="color:var(--yellow)">● NO IP</span>`
+      : '<span class="status-down">● DOWN</span>';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><b>${n.id}</b></td>
+      <td><span class="tag" style="background:rgba(79,195,247,0.1);color:#4fc3f7">End Host</span></td>
+      <td style="font-family:monospace;font-size:12px">
+        <span style="color:var(--green)">${ip}</span><br>
+        <span style="color:var(--text2);font-size:11px">subnet: ${n.subnet || '—'}</span>
+      </td>
+      <td>${statusStr}</td>
+      <td style="font-size:12px">${gw}</td>
+      <td style="font-family:monospace;font-size:12px;color:var(--text2)">—</td>`;
     tbody.appendChild(tr);
   });
 }
@@ -590,15 +664,19 @@ function renderOspfTable() {
   const rc = document.getElementById('route-cards');
   rc.innerHTML = '';
   const routes = [
-    {label:'O  (Intra-Area 10)', routes:['192.168.1.0/24','192.168.2.0/24','192.168.3.0/24'], color:'var(--blue)'},
-    {label:'O IA (Inter-Area 20)', routes:['24.0.0.0/24','192.168.4.0/24','192.168.5.0/24','192.168.6.0/24'], color:'var(--green)'},
-    {label:'C  (Connected)', routes:['12.0.0.0/24','13.0.0.0/24'], color:'var(--orange)'},
+    {label:'O — Area 10 (Intra-Area, Branch A)', sub:'R1 ↔ R3 · 13.0.0.0/24 transit',
+     routes:['192.168.1.0/24 — IT/Admin (Sw5)','192.168.2.0/24 — HR (Sw6)','192.168.3.0/24 — Guest (Sw7)'], color:'var(--blue)'},
+    {label:'O IA — Area 20 (Inter-Area, Branch B)', sub:'R2 ↔ R4 · 24.0.0.0/24 transit',
+     routes:['192.168.4.0/24 — Finance (Sw8)','192.168.5.0/24 — Ops (Sw9)','192.168.6.0/24 — Servers (Sw10)'], color:'var(--green)'},
+    {label:'C — Connected / Transit (Area 0 Backbone)', sub:'R1 ↔ R2 ABR link',
+     routes:['12.0.0.0/24 — R1 Gi0/0 ↔ R2 Gi0/0','13.0.0.0/24 — R1 Gi0/1 ↔ R3 Gi0/0'], color:'var(--orange)'},
   ];
   routes.forEach(g => {
     const div = document.createElement('div');
     div.className = 'card';
-    div.innerHTML = `<h4 style="color:${g.color}">${g.label}</h4>` +
-      g.routes.map(r => `<div style="font-family:monospace;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border)">${r}</div>`).join('');
+    div.innerHTML = `<h4 style="color:${g.color};margin-bottom:2px">${g.label}</h4>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px">${g.sub}</div>` +
+      g.routes.map(r => `<div style="font-family:monospace;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border);color:var(--text2)">${r}</div>`).join('');
     rc.appendChild(div);
   });
 }
@@ -616,23 +694,39 @@ function inferArea(router, iface) {
 
 // ── ACL TAB ───────────────────────────────────────────
 function renderAclTab() {
-  // Traffic matrix
-  const sources = ['IT/Admin\n192.168.1.x','HR\n192.168.2.x','Guest\n192.168.3.x'];
-  const dests   = ['Finance\n192.168.4.x','Ops\n192.168.5.x','Servers\n192.168.6.x','IT/Admin\n192.168.1.x','Other'];
-  const matrix  = [
-    ['allow','allow','allow','—','allow'],
-    ['allow','allow','deny', '—','allow'],
-    ['allow','allow','deny', 'deny','allow'],
+  // 6×6 Traffic Matrix (based on ACL policy intent)
+  const zones = [
+    {id:'IT',      label:'IT/Admin',  sub:'192.168.1.x', color:'#58a6ff'},
+    {id:'HR',      label:'HR',        sub:'192.168.2.x', color:'#58a6ff'},
+    {id:'Guest',   label:'Guest WiFi',sub:'192.168.3.x', color:'#ffa657'},
+    {id:'Finance', label:'Finance',   sub:'192.168.4.x', color:'#2ecc71'},
+    {id:'Ops',     label:'Ops',       sub:'192.168.5.x', color:'#2ecc71'},
+    {id:'Servers', label:'Servers',   sub:'192.168.6.x', color:'#2ecc71'},
   ];
-
-  let tbl = '<thead><tr><th>Source \\ Dest</th>';
-  dests.forEach(d => tbl += `<th>${d.replace('\n','<br>')}</th>`);
+  // matrix[src][dst] = {v: 'allow'|'deny'|'—', acl: ''}
+  const M = [
+  //  IT        HR        Guest     Finance      Ops       Servers
+    ['—',       'allow',  'allow',  'allow',     'allow',  'allow'   ], // IT
+    ['allow',   '—',      'allow',  'deny:120',  'allow',  'deny:120'], // HR
+    ['deny:110','allow',  '—',      'allow',     'allow',  'allow'   ], // Guest
+    ['allow',   'allow',  'allow',  '—',         'allow',  'deny:10' ], // Finance
+    ['allow',   'allow',  'allow',  'deny:20',   '—',      'deny:10' ], // Ops
+    ['allow',   'allow',  'allow',  'deny:20',   'allow',  '—'       ], // Servers
+  ];
+  let tbl = '<thead><tr><th style="text-align:left">From \ To →</th>';
+  zones.forEach(z => tbl += `<th style="color:${z.color}">${z.label}<br><span style="font-size:10px;color:var(--text2)">${z.sub}</span></th>`);
   tbl += '</tr></thead><tbody>';
-  sources.forEach((s, i) => {
-    tbl += `<tr><td style="font-weight:600;text-align:left">${s.replace('\n','<br>')}</td>`;
-    matrix[i].forEach(cell => {
-      const cls = cell === 'allow' ? 'acl-cell-allow' : cell === 'deny' ? 'acl-cell-deny' : 'acl-cell-na';
-      tbl += `<td class="${cls}">${cell === 'allow' ? '✓ ALLOW' : cell === 'deny' ? '✗ DENY' : '—'}</td>`;
+  zones.forEach((src, i) => {
+    tbl += `<tr><td style="font-weight:600;color:${src.color}">${src.label}<br><span style="font-size:10px;color:var(--text2)">${src.sub}</span></td>`;
+    M[i].forEach(cell => {
+      if (cell === '—') {
+        tbl += `<td class="acl-cell-na" style="font-size:13px">—</td>`;
+      } else if (cell.startsWith('deny')) {
+        const acl = cell.split(':')[1];
+        tbl += `<td class="acl-cell-deny">✗<br><span style="font-size:9px">ACL ${acl}</span></td>`;
+      } else {
+        tbl += `<td class="acl-cell-allow">✓</td>`;
+      }
     });
     tbl += '</tr>';
   });
@@ -678,6 +772,14 @@ function renderDhcpTab() {
       const pct   = Math.round((p.leased / total) * 100) || 0;  // NaN → 0
       const cls   = pct > 80 ? 'high' : pct > 50 ? 'medium' : 'low';
       const net   = p.network || '—';
+      // Find VPC assigned to this pool by matching subnet prefix
+      const poolPrefix = net.split('.').slice(0,3).join('.');
+      const assignedVpcs = topoData.nodes
+        .filter(n => n.id.startsWith('VPC') && n.subnet && n.subnet.startsWith(poolPrefix))
+        .map(n => {
+          const vs = statusData.devices[n.id];
+          return `${n.id}: <span style="color:var(--green);font-family:monospace">${vs?.ip || 'no IP'}</span>`;
+        }).join('  ');
       card.innerHTML += `<div class="dhcp-pool">
         <div class="dhcp-pool-name">
           <span><b>${p.name}</b> <span style="color:var(--text2);font-size:11px">${net}</span></span>
@@ -685,7 +787,8 @@ function renderDhcpTab() {
         </div>
         <div class="progress-bar"><div class="progress-fill ${cls}" style="width:${Math.max(pct,1)}%"></div></div>
         <div style="font-size:11px;color:var(--text2);margin-top:2px">${pct}% utilized</div>
-      </div>`;
+        ${assignedVpcs ? `<div style="font-size:11px;margin-top:4px">${assignedVpcs}</div>` : ''}
+      </div>`; 
     });
     container.appendChild(card);
   });
