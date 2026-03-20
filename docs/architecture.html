@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CCIE Lab — Step by Step Flow</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0d1117;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #e6edf3;
+  padding: 30px 20px;
+  min-height: 100vh;
+}
+
+h1 { text-align:center; font-size:20px; color:#58a6ff; letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
+.sub { text-align:center; font-size:12px; color:#6e7681; margin-bottom:40px; letter-spacing:1px; }
+
+.flow {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ── STEP ROW ── */
+.step {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+
+/* number column */
+.step-num {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 56px;
+  flex-shrink: 0;
+}
+.circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  flex-shrink: 0;
+  z-index: 1;
+  border: 2px solid;
+}
+.vline {
+  width: 2px;
+  flex: 1;
+  min-height: 20px;
+  margin: 0 auto;
+  border-radius: 2px;
+}
+
+/* content card */
+.step-card {
+  flex: 1;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 6px;
+  border: 1px solid;
+  margin-left: 12px;
+}
+
+.step-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.step-desc {
+  font-size: 13px;
+  color: #8b949e;
+  line-height: 1.7;
+  margin-bottom: 10px;
+}
+
+/* folder pill row */
+.files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.file-pill {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.pill-icon { font-size: 12px; }
+
+/* colour themes per step */
+/* 1 - blue */
+.s1 .circle  { background:#0d2044; border-color:#1f6feb; color:#79c0ff; }
+.s1 .vline   { background: linear-gradient(#1f6feb, #8957e5); }
+.s1 .step-card { background:#0f1c30; border-color:#1f3d6e; }
+.s1 .step-title { color:#79c0ff; }
+
+/* 2 - purple */
+.s2 .circle  { background:#1d1340; border-color:#8957e5; color:#d2a8ff; }
+.s2 .vline   { background: linear-gradient(#8957e5, #d29922); }
+.s2 .step-card { background:#18122b; border-color:#3d2470; }
+.s2 .step-title { color:#d2a8ff; }
+
+/* 3 - yellow */
+.s3 .circle  { background:#221a08; border-color:#d29922; color:#e3b341; }
+.s3 .vline   { background: linear-gradient(#d29922, #d29922); }
+.s3 .step-card { background:#1a1507; border-color:#5a4010; }
+.s3 .step-title { color:#e3b341; }
+
+/* 4 - yellow */
+.s4 .circle  { background:#221a08; border-color:#d29922; color:#e3b341; }
+.s4 .vline   { background: linear-gradient(#d29922, #238636); }
+.s4 .step-card { background:#1a1507; border-color:#5a4010; }
+.s4 .step-title { color:#e3b341; }
+
+/* 5 - green */
+.s5 .circle  { background:#0d1f11; border-color:#238636; color:#3fb950; }
+.s5 .vline   { background: linear-gradient(#238636, #238636); }
+.s5 .step-card { background:#0c1a10; border-color:#1a4d28; }
+.s5 .step-title { color:#3fb950; }
+
+/* 6 - green */
+.s6 .circle  { background:#0d1f11; border-color:#238636; color:#3fb950; }
+.s6 .vline   { background: linear-gradient(#238636, #58a6ff); }
+.s6 .step-card { background:#0c1a10; border-color:#1a4d28; }
+.s6 .step-title { color:#3fb950; }
+
+/* 7 - blue */
+.s7 .circle  { background:#0d2044; border-color:#1f6feb; color:#79c0ff; }
+.s7 .vline   { display:none; }
+.s7 .step-card { background:#0f1c30; border-color:#1f3d6e; }
+.s7 .step-title { color:#79c0ff; }
+
+/* result banner */
+.result {
+  max-width: 960px;
+  margin: 16px auto 0;
+  background: #0c1a10;
+  border: 1.5px solid #238636;
+  border-radius: 12px;
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.result-icon { font-size: 28px; }
+.result-text h3 { font-size:14px; color:#3fb950; font-weight:700; margin-bottom:3px; }
+.result-text p  { font-size:12px; color:#8b949e; }
+
+/* folder tree side panel */
+.layout {
+  max-width: 960px;
+  margin: 24px auto 0;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.tree-card {
+  flex: 1;
+  min-width: 280px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 18px;
+}
+.tree-card h3 {
+  font-size: 12px;
+  color: #8b949e;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.tree {
+  font-family: 'Courier New', monospace;
+  font-size: 12.5px;
+  line-height: 2;
+}
+.tree .dir   { color: #79c0ff; font-weight: 700; }
+.tree .file  { color: #c9d1d9; }
+.tree .key   { color: #7ee787; font-weight: 700; }
+.tree .note  { color: #6e7681; font-size: 11px; }
+.tree .step-ref {
+  display: inline-block;
+  background: #1f2d3d;
+  border: 1px solid #1f6feb;
+  border-radius: 4px;
+  padding: 0 5px;
+  font-size: 10px;
+  color: #79c0ff;
+  font-weight: 700;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.tree .step-ref-y {
+  background: #2a2008;
+  border-color: #d29922;
+  color: #e3b341;
+}
+.tree .step-ref-g {
+  background: #0c1f10;
+  border-color: #238636;
+  color: #3fb950;
+}
+
+.cicd-card {
+  flex: 1;
+  min-width: 280px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 12px;
+  padding: 18px;
+}
+.cicd-card h3 {
+  font-size: 12px;
+  color: #8b949e;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+.cicd-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 10px;
+}
+.cicd-box {
+  background: #0d1117;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  flex: 1;
+  text-align: center;
+  border: 1px solid #30363d;
+}
+.cicd-box strong { display:block; font-size:13px; margin-bottom:2px; }
+.cicd-box span   { font-size:11px; color:#8b949e; }
+.cicd-arrow {
+  width: 28px;
+  text-align: center;
+  color: #6e7681;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.c-blue   { color: #79c0ff; }
+.c-yellow { color: #e3b341; }
+.c-green  { color: #3fb950; }
+.c-purple { color: #d2a8ff; }
+</style>
+</head>
+<body>
+
+<h1>How It All Works — Step by Step</h1>
+<p class="sub">EVE-NG → Ubuntu VM → GitHub → GitHub Pages</p>
+
+<div class="flow">
+
+  <!-- STEP 1 -->
+  <div class="step s1">
+    <div class="step-num">
+      <div class="circle">1</div>
+      <div class="vline"></div>
+    </div>
+    <div class="step-card">
+      <div class="step-title">🖥 You power on the lab in EVE-NG (192.168.1.100)</div>
+      <div class="step-desc">
+        16 virtual devices boot up inside EVE-NG PRO on your Windows PC.<br>
+        Each device gets a <strong>Telnet console port</strong> assigned by EVE-NG (e.g. port 32769, 32770…).
+      </div>
+      <div class="files">
+        <span class="file-pill"><span class="pill-icon">🗂</span> labs/lab01-ospf-multiarea-acl/</span>
+        <span class="file-pill"><span class="pill-icon">📄</span> inventory/hosts.yaml — device IPs &amp; ports</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="step s2">
+    <div class="step-num">
+      <div class="circle">2</div>
+      <div class="vline"></div>
+    </div>
+    <div class="step-card">
+      <div class="step-title">⏱ Cron job fires every 5 minutes on Ubuntu VM (192.168.1.103)</div>
+      <div class="step-desc">
+        A cron entry runs <code style="color:#d2a8ff">*/5 * * * * python3 /...monitor.py</code><br>
+        This is the <strong>trigger</strong> — no manual action needed once set up.
+      </div>
+      <div class="files">
+        <span class="file-pill"><span class="pill-icon">🕐</span> crontab -e  (on Ubuntu VM)</span>
+        <span class="file-pill"><span class="pill-icon">📋</span> /var/log/monitor.log</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div class="step s3">
+    <div class="step-num">
+      <div class="circle">3</div>
+      <div class="vline"></div>
+    </div>
+    <div class="step-card">
+      <div class="step-title">🐍 monitor.py runs — connects to all 16 devices via Telnet</div>
+      <div class="step-desc">
+        Uses <strong>ThreadPoolExecutor</strong> to poll all 16 devices in parallel.<br>
+        Sends CLI commands: <code style="color:#e3b341">show ip int brief</code>, <code style="color:#e3b341">show ip ospf neighbor</code>, <code style="color:#e3b341">show ip route</code>, <code style="color:#e3b341">ip dhcp</code><br>
+        VPCs get <code style="color:#e3b341">show ip</code> via their own console ports.
+      </div>
+      <div class="files">
+        <span class="file-pill"><span class="pill-icon">🐍</span> labs/lab01-ospf-multiarea-acl/scripts/monitor.py</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 4 -->
+  <div class="step s4">
+    <div class="step-num">
+      <div class="circle">4</div>
+      <div class="vline"></div>
+    </div>
+    <div class="step-card">
+      <div class="step-title">💾 monitor.py writes results → docs/status.json</div>
+      <div class="step-desc">
+        All parsed output (interfaces, OSPF neighbors, DHCP leases, device status) is saved as <strong>JSON</strong>.<br>
+        This file is the <strong>single source of truth</strong> for the dashboard.
+      </div>
+      <div class="files">
+        <span class="file-pill"><span class="pill-icon">📊</span> docs/status.json  ← updated every 5 min</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 5 -->
+  <div class="step s5">
+    <div class="step-num">
+      <div class="circle">5</div>
+      <div class="vline"></div>
+    </div>
+    <div class="step-card">
+      <div class="step-title">📤 monitor.py does git add → commit → push</div>
+      <div class="step-desc">
+        At the end of every run, monitor.py automatically:<br>
+        <code style="color:#7ee787">git add docs/status.json</code> → <code style="color:#7ee787">git commit -m "monitor: ..."</code> → <code style="color:#7ee787">git push origin main</code><br>
+        This is your <strong>"CI" step</strong> — code/data automatically committed and pushed.
+      </div>
+      <div class="files">
+        <span class="file-pill"><span class="pill-icon">🔁</span> git push → github.com/netauto-abhijeet/CCIE-Automation</span>
+        <span class="file-pill"><span class="pill-icon">🌿</span> branch: main</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 6 -->
+  <div class="step s6">
+    <div class="step-num">
+      <div class="circle">6</div>
+      <div class="vline"></div>
+    </div>
+    <div class="step-card">
+      <div class="step-title">☁️ GitHub receives the push — GitHub Pages auto-publishes /docs</div>
+      <div class="step-desc">
+        GitHub is configured to serve the <strong>/docs folder</strong> as a static website.<br>
+        Every push = instant publish. No build step, no pipeline config needed.<br>
+        This is your <strong>"CD" step</strong> — deployed automatically on every push.
+      </div>
+      <div class="files">
+        <span class="file-pill"><span class="pill-icon">📁</span> docs/  ← GitHub Pages root</span>
+        <span class="file-pill"><span class="pill-icon">⚙️</span> Settings → Pages → Source: /docs</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 7 -->
+  <div class="step s7">
+    <div class="step-num">
+      <div class="circle">7</div>
+    </div>
+    <div class="step-card">
+      <div class="step-title">🌐 Browser opens dashboard — index.html fetches status.json</div>
+      <div class="step-desc">
+        <code style="color:#79c0ff">index.html</code> is a static page — it <strong>never changes</strong>.<br>
+        On load it fetches <code style="color:#7ee787">status.json</code> from the same /docs URL and renders all 5 tabs.<br>
+        ⚠ If EVE-NG is OFF → last pushed status.json is shown (stale but accessible).
+      </div>
+      <div class="files">
+        <span class="file-pill"><span class="pill-icon">🌐</span> docs/index.html  ← static UI, never changes</span>
+        <span class="file-pill"><span class="pill-icon">📊</span> docs/status.json  ← fetched at runtime</span>
+        <span class="file-pill"><span class="pill-icon">🔗</span> netauto-abhijeet.github.io/CCIE-Automation</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RESULT -->
+<div class="result">
+  <div class="result-icon">✅</div>
+  <div class="result-text">
+    <h3>End result: A live network dashboard, updated automatically every 5 minutes, publicly accessible — zero manual steps after initial setup.</h3>
+    <p>Everything lives in one repo. All work is under <strong>labs/lab01-ospf-multiarea-acl/</strong> and <strong>docs/</strong>. Nothing else is used.</p>
+  </div>
+</div>
+
+<!-- FOLDER TREE + CICD MAP -->
+<div class="layout">
+
+  <!-- Folder tree with step refs -->
+  <div class="tree-card">
+    <h3>Folder Structure — where each step lives</h3>
+    <div class="tree">
+      <span class="dir">CCIE-Automation/</span><br>
+      <span>├── </span><span class="dir">docs/</span><span class="note">  ← GitHub Pages root</span><br>
+      <span>│   ├── </span><span class="key">index.html</span><span class="step-ref">step 7</span><br>
+      <span>│   ├── </span><span class="key">status.json</span><span class="step-ref-y step-ref">step 4</span><br>
+      <span>│   └── </span><span class="file">architecture.html</span><br>
+      <span>└── </span><span class="dir">labs/</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;└── </span><span class="dir">lab01-ospf-multiarea-acl/</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── </span><span class="dir">scripts/</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│   ├── </span><span class="key">monitor.py</span><span class="step-ref-y step-ref">step 3</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│   └── </span><span class="file">deploy.py</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── </span><span class="dir">inventory/</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│   ├── </span><span class="file">hosts.yaml</span><span class="step-ref">step 1</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│   └── </span><span class="file">groups.yaml</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;├── </span><span class="dir">templates/</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│   ├── </span><span class="file">router.j2</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│   └── </span><span class="file">switch.j2</span><br>
+      <span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└── </span><span class="file">README.md</span>
+    </div>
+  </div>
+
+  <!-- CI/CD map -->
+  <div class="cicd-card">
+    <h3>Where "CI/CD" fits in</h3>
+
+    <div class="cicd-row">
+      <div class="cicd-box" style="border-color:#8957e5">
+        <strong class="c-purple">CI</strong>
+        <span>Continuous Integration</span>
+      </div>
+    </div>
+    <div style="font-size:12px;color:#8b949e;margin-bottom:12px;padding-left:4px">
+      Steps 2–5: cron fires → monitor.py runs → commits fresh data to GitHub automatically, on a schedule.
+      <br><span style="color:#d2a8ff">No human manually commits.</span>
+    </div>
+
+    <div class="cicd-row">
+      <div class="cicd-box" style="border-color:#238636">
+        <strong class="c-green">CD</strong>
+        <span>Continuous Deployment</span>
+      </div>
+    </div>
+    <div style="font-size:12px;color:#8b949e;margin-bottom:16px;padding-left:4px">
+      Steps 5–6: every git push → GitHub Pages instantly re-publishes /docs as a live website.
+      <br><span style="color:#3fb950">No manual deploy step.</span>
+    </div>
+
+    <div style="border-top:1px solid #21262d;padding-top:14px">
+      <div style="font-size:11px;color:#6e7681;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">Full flow in one line</div>
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        <span style="background:#0f2027;border:1px solid #1f6feb;border-radius:6px;padding:4px 8px;font-size:11px;color:#79c0ff">EVE-NG</span>
+        <span style="color:#6e7681">→</span>
+        <span style="background:#1a1a0f;border:1px solid #d29922;border-radius:6px;padding:4px 8px;font-size:11px;color:#e3b341">monitor.py</span>
+        <span style="color:#6e7681">→</span>
+        <span style="background:#1a1a0f;border:1px solid #d29922;border-radius:6px;padding:4px 8px;font-size:11px;color:#e3b341">status.json</span>
+        <span style="color:#6e7681">→</span>
+        <span style="background:#0f1f17;border:1px solid #238636;border-radius:6px;padding:4px 8px;font-size:11px;color:#3fb950">git push</span>
+        <span style="color:#6e7681">→</span>
+        <span style="background:#0f1f17;border:1px solid #238636;border-radius:6px;padding:4px 8px;font-size:11px;color:#3fb950">GitHub Pages</span>
+        <span style="color:#6e7681">→</span>
+        <span style="background:#0f2027;border:1px solid #1f6feb;border-radius:6px;padding:4px 8px;font-size:11px;color:#79c0ff">Dashboard</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
