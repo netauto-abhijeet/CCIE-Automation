@@ -254,13 +254,6 @@ def main():
     print(f"  CCIE Lab Monitor — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*55}")
     
-    # Quick host check — skip entire poll if EVE-NG is off
-    if not eveng_reachable():
-        print("  ⏭  EVE-NG unreachable — lab is off, skipping poll")
-        print("  Last status.json kept unchanged (dashboard shows last known state)")
-        print(f"{'='*55}\n")
-        return
-
     devices_status = {}
     futures = {}
 
@@ -290,6 +283,13 @@ def main():
             print(f"  ⏱  {name}: timed out")
             devices_status[name] = {"status": "unknown", "error": "timeout"}
     
+    # Skip push if all devices are down — avoids commit spam when lab nodes are off
+    up_count = sum(1 for d in devices_status.values() if d.get('status') == 'up')
+    if up_count == 0:
+        print("  ⏭  All devices down — nodes are off, keeping last status.json unchanged")
+        print(f"{'='*55}\n")
+        return
+
     # Write status.json
     status = {
         "_meta": {
