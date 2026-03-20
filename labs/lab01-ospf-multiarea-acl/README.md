@@ -64,3 +64,19 @@ R4# show ip interface gi0/3   (ACL 10 on Servers)
 | Sw8 | 48381 | Finance DHCP 192.168.4.0/24 |
 | Sw9 | 34575 | Operations DHCP 192.168.5.0/24 |
 | Sw10 | 49197 | Servers DHCP 192.168.6.0/24 |
+
+## CI/CD Pipeline
+This lab uses a fully automated monitoring and publishing pipeline:
+
+| Step | What happens |
+|------|-------------|
+| 1 | EVE-NG boots 16 virtual devices |
+| 2 | Cron on Ubuntu VM (192.168.1.103) triggers `monitor.py` every 5 min |
+| 3 | `monitor.py` Telnets into all 16 consoles and collects CLI output |
+| 4 | Parsed results written to `../../docs/status.json` |
+| 5 | `git push` to main — this is the **CI** step |
+| 6 | GitHub Pages auto-publishes `/docs` — this is the **CD** step |
+| 7 | Dashboard at GitHub Pages reads `status.json` and renders live |
+
+**Architecture diagram:** [View pipeline visualization](architecture.html)
+**Live dashboard:** https://netauto-abhijeet.github.io/CCIE-Automation/
