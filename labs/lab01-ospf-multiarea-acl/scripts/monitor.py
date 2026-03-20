@@ -152,6 +152,20 @@ def parse_sw_status(txt):
     return ifaces
 
 
+# ── REACHABILITY CHECK ─────────────────────────────────
+
+def eveng_reachable(timeout=3):
+    """Quick TCP check to EVE-NG SSH port. Fast exit when lab is off."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        s.connect((EVENG_IP, 22))
+        s.close()
+        return True
+    except Exception:
+        return False
+
+
 # ── COLLECTORS (run in threads) ─────────────────────────
 
 def poll_router(name, port, pw=None):
@@ -240,9 +254,16 @@ def main():
     print(f"  CCIE Lab Monitor — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*55}")
     
+    # Quick host check — skip entire poll if EVE-NG is off
+    if not eveng_reachable():
+        print("  ⏭  EVE-NG unreachable — lab is off, skipping poll")
+        print("  Last status.json kept unchanged (dashboard shows last known state)")
+        print(f"{'='*55}\n")
+        return
+
     devices_status = {}
     futures = {}
-    
+
     # Submit all polls in parallel
     with ThreadPoolExecutor(max_workers=16) as ex:
         for name, d in DEVICES.items():
