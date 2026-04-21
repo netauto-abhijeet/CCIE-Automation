@@ -1,25 +1,24 @@
-# CCIE Automation - Workspace
+# CCIE Automation - AUTOCOR Practice
+
+EVE-NG server: 172.22.130.172  
+Jump host: banevejump01 (172.22.130.173)  
+Python venv: ~/netauto
 
 ## Structure
 ```
-labs/                        # One folder per lab - fully self-contained
-  lab01-ospf-multiarea/      # OSPF 10 multi-area topology
-    inventory/               # Device list and credentials
-    templates/               # Jinja2 config templates
-    configs/                 # Generated configs (auto-created)
-    scripts/                 # deploy.py and other scripts
-    README.md                # Lab description and instructions
-
-assignments/                 # One folder per assignment
-  assignment01-netmiko-basics/
-
-notes/                       # Study notes (shared)
-common/                      # Shared utilities reused across labs
+labs/          # Automation scripts - one folder per topic
+common/        # Shared utilities (netmiko helpers, parsers, etc.)
+notes/         # Study notes
 ```
 
 ## Quick Start
 ```bash
-# Deploy Lab 01
-cd labs/lab01-ospf-multiarea
-python3 scripts/deploy.py
+source ~/netauto/bin/activate
+cd ~/CCIE-Automation/labs
 ```
+
+## EVE-NG Labs Available
+- Pynet - CCIE EI Topologies (Module 1-5)
+- Pynet - CCIE Automation Class
+- Orhan-CCIE-ENT
+- Narbik-CCIE-EI

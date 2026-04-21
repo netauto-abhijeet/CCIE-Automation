@@ -1,0 +1,12 @@
+{
+    "python.defaultInterpreterPath": "/home/eve/netauto/bin/python3",
+    "python.terminal.activateEnvironment": true,
+    "terminal.integrated.env.linux": {
+        "VIRTUAL_ENV": "/home/eve/netauto",
+        "PATH": "/home/eve/netauto/bin:${env:PATH}"
+    },
+    "editor.fontSize": 14,
+    "editor.tabSize": 4,
+    "files.autoSave": "afterDelay",
+    "git.autofetch": true
+}
